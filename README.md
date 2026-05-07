@@ -12,16 +12,20 @@ Current focus:
 - exclude large experiment artifacts from version control;
 - provide a clear path toward full reproducibility.
 
-## Repository Components
+## Included in This Initial Version
 
-- `PromptAD/`: PromptAD-based pipeline and instability analysis scripts.
-- `patchcore-inspection/`: PatchCore baseline code and evaluation scripts.
-- `PaDiM-Anomaly-Detection-Localization-master/`: PaDiM baseline code and related experiments.
 - `Figures/`: lightweight figure assets used in analysis notes.
 - `result_analysis/`: project-level result aggregation scripts/assets.
 - `docs/`: repository notes and release planning.
 
-## What Is Excluded in This Initial Version
+## Planned Source Integration (Next Update)
+
+The following codebases are prepared locally and will be integrated in a follow-up cleanup pass:
+- `PromptAD/`
+- `patchcore-inspection/`
+- `PaDiM-Anomaly-Detection-Localization-master/`
+
+## Excluded in This Initial Version
 
 To keep the repository lightweight and clone-friendly, large generated artifacts are ignored:
 - training logs and temporary outputs;

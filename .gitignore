@@ -21,47 +21,61 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Logs
+# Logs / tracking
 *.log
 logs/
 wandb/
 mlruns/
 
-# Notebooks and checkpoints
+# Notebook artifacts
 .ipynb_checkpoints/
 
-# Experiment outputs and artifacts
-outputs/
-output/
-results/
-checkpoints/
-ckpt/
-ckpts/
-runs/
-experiments/
-exp/
+# Generic experiment artifacts
+**/outputs/
+**/output/
+**/results/
+**/checkpoints/
+**/ckpt/
+**/ckpts/
+**/runs/
+**/experiments/
+**/exp/
 
-# Data and model weights
-data/
-datasets/
-dataset/
+# Model weights / large binaries
 *.pth
 *.pt
 *.ckpt
 *.onnx
 *.h5
-
-# Archives and large binaries
+*.npy
+*.npz
 *.zip
 *.tar
 *.tar.gz
 *.tgz
 *.7z
-*.npy
-*.npz
 
 # Local secrets / envs
 .env
 .env.*
 *.key
 *.pem
+
+# Project-specific large folders (keep source code, ignore generated artifacts)
+paper_figures/
+paper_figures.zip
+
+PromptAD/result_*/
+PromptAD/logs/
+PromptAD/pairwise_penalty_analysis_out/
+
+patchcore-inspection/models/
+patchcore-inspection/results/
+patchcore-inspection/logs/
+
+PaDiM-Anomaly-Detection-Localization-master/mvtec_result_*/
+PaDiM-Anomaly-Detection-Localization-master/visa_result_*/
+PaDiM-Anomaly-Detection-Localization-master/protocol_*/
+PaDiM-Anomaly-Detection-Localization-master/padim_result_seed_search*/
+PaDiM-Anomaly-Detection-Localization-master/result_analysis/
+PaDiM-Anomaly-Detection-Localization-master/figures/

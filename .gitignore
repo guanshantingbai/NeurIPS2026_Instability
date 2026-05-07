@@ -1,0 +1,67 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# IDE / system
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+wandb/
+mlruns/
+
+# Notebooks and checkpoints
+.ipynb_checkpoints/
+
+# Experiment outputs and artifacts
+outputs/
+output/
+results/
+checkpoints/
+ckpt/
+ckpts/
+runs/
+experiments/
+exp/
+
+# Data and model weights
+data/
+datasets/
+dataset/
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.h5
+
+# Archives and large binaries
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.npy
+*.npz
+
+# Local secrets / envs
+.env
+.env.*
+*.key
+*.pem

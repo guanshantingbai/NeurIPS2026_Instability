@@ -97,3 +97,24 @@ external/PaDiM-Anomaly-Detection-Localization-master/protocol_*/
 external/PaDiM-Anomaly-Detection-Localization-master/padim_result_seed_search*/
 external/PaDiM-Anomaly-Detection-Localization-master/result_analysis/
 external/PaDiM-Anomaly-Detection-Localization-master/figures/
+
+# --- Vendored external trees: never commit artifacts (complements on-disk cleanup) ---
+external/**/__pycache__/
+external/**/logs/
+external/**/results/
+external/**/result_*/
+external/**/result_analysis/
+external/**/padim_result_seed_search*/
+external/**/mvtec_result_*/
+external/**/visa_result_*/
+external/**/protocol_*/
+external/**/*.pth
+external/**/*.pt
+external/**/*.ckpt
+external/**/*.pkl
+external/**/*.faiss
+external/**/*.npy
+external/**/*.npz
+external/**/*.zip
+external/**/*.tar
+external/**/*.tar.gz

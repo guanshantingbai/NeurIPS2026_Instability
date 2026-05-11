@@ -55,22 +55,26 @@ def main() -> None:
             "rotate_minus_5deg": float(row["score_rot_neg"]),
         }
         condition_scores = json.dumps(views)
+        base = float(row["score_id"])
         wide_rows.append(
             {
                 "sample_id": sid,
                 "label": int(row["label"]),
-                "identity_score": float(row["score_id"]),
-                "fused_score": float(row["score_id"]),
+                "identity_score": base,
+                "base_score": base,
+                "fused_score": base,
                 "condition_scores": condition_scores,
                 "view_scores": condition_scores,
                 "dataset": args.dataset,
                 "category": str(row["classname"]),
                 "transform": "tta_bundle",
+                "condition": "tta_bundle",
                 "config": cfg_json,
                 "image_path": str(row["image_path"]),
             }
         )
         for transform, score in views.items():
+            s = float(score)
             long_rows.append(
                 {
                     "sample_id": sid,
@@ -79,7 +83,10 @@ def main() -> None:
                     "category": str(row["classname"]),
                     "transform": transform,
                     "condition": transform,
-                    "score": float(score),
+                    "condition_score": s,
+                    "score": s,
+                    "base_score": base,
+                    "fused_score": base,
                     "config": cfg_json,
                     "image_path": str(row["image_path"]),
                 }

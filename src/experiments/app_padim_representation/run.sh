@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Stage 2 only: never runs scripts/run_padim_raw.sh (Stage 1).
+# Consumes mechanism_from_raw.csv if present, else bundled fast-path stub.
+# PADIM_FROM_RAW=1 requires mechanism_from_raw.csv or errors with Stage 1 hint.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,16 +12,26 @@ cd "$REPO_ROOT"
 
 mkdir -p outputs/figures/app_padim_representation outputs/tables/app_padim_representation outputs/cached_results/app_padim_representation
 
-if [ "${FULL_RUN:-0}" = "1" ]; then
-  echo "WARNING: FULL_RUN=1 runs PaDiM seed_killer_evidence_pipeline (heavy)." >&2
-  python -m src.models.padim_adapter.run_padim "padim_seed_killer_evidence_pipeline.py" "$@"
+MECH="$REPO_ROOT/outputs/cached_results/app_padim_representation/mechanism_from_raw.csv"
+SAMPLE="$REPO_ROOT/src/experiments/app_padim_representation/samples/fastpath"
+
+if [ -f "$MECH" ]; then
+  cp -f "$MECH" outputs/tables/app_padim_representation/
+  echo "stage2_padim_appendix_e" >outputs/figures/app_padim_representation/fullrun_done.txt
+  echo "app_padim_representation: Stage 2 OK (mechanism_from_raw.csv -> tables)"
   exit 0
 fi
 
-SAMPLE="$REPO_ROOT/src/experiments/app_padim_representation/samples/fastpath"
+if [ "${PADIM_FROM_RAW:-0}" = "1" ]; then
+  echo "ERROR: PADIM_FROM_RAW=1 but missing $MECH" >&2
+  echo "       Run Stage 1 first: FULL_RUN=1 bash scripts/run_padim_raw.sh" >&2
+  echo "       (see docs/FULLPATH_PADIM.md)" >&2
+  exit 1
+fi
+
 if [ ! -d "$SAMPLE/tables" ]; then
   echo "ERROR: Appendix E fast path missing $SAMPLE/tables" >&2
-  echo "       Set FULL_RUN=1 for full PaDiM appendix pipeline." >&2
+  echo "       Provide mechanism_from_raw.csv after Stage 1, or restore bundled stubs." >&2
   exit 1
 fi
 

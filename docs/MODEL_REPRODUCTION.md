@@ -1,24 +1,29 @@
-# Model-level reproduction (full path)
+# Model-level reproduction (two-stage)
 
-Fast path behavior in `scripts/reproduce_*.sh` and section `run.sh` files is unchanged unless **`FULL_RUN=1`** is set.
+**Stage 1** — `scripts/run_*_raw.sh` (real inference / scoring; each script gates with `FULL_RUN=1` as documented below).
 
-This document describes **PatchCore** full-path entrypoints first. PromptAD and PaDiM are out of scope for this phase.
+**Stage 2** — `scripts/reproduce_app_patchcore_tta.sh`, `scripts/reproduce_sec3_padim.sh`, `scripts/reproduce_app_padim_representation.sh` and matching `run.sh` files: **consume** existing raw or cached artifacts only; **never** invoke Stage 1. Setting **`FULL_RUN=1` alone does not trigger** `run_*_raw.sh` from `reproduce_*`.
+
+This document describes **PatchCore** and **PaDiM** Stage 1 / Stage 2 entrypoints. PromptAD-only flows are not detailed here.
+
+- PatchCore: **`docs/FULLPATH_PATCHCORE.md`**
+- PaDiM: **`docs/FULLPATH_PADIM.md`**
 
 ## PatchCore (Appendix F + raw scores)
 
 ### Layout
 
-| Stage | Output |
-|-------|--------|
-| Raw GPU scoring + unified export | `outputs/cached_results/raw_scores/patchcore/` |
-| Downstream analyze (pairwise, margin, mechanism, figures) | `outputs/cached_results/app_patchcore_tta/` + copies of PNG/PDF to `outputs/figures/app_patchcore_tta/` |
+| Stage | Script / consumer | Output |
+|-------|---------------------|--------|
+| **1** | `FULL_RUN=1 bash scripts/run_patchcore_raw.sh` | `outputs/cached_results/raw_scores/patchcore/` (`patchcore_tta_scores.csv`, unified CSVs) |
+| **2** | `bash scripts/reproduce_app_patchcore_tta.sh` | If raw unified long exists: analyze → `outputs/cached_results/app_patchcore_tta/` + `outputs/figures/app_patchcore_tta/`; else fast path copy from `result_analysis/patchcore_tta/` |
 
 ### Environment variables
 
-| Variable | Required for full run | Meaning |
-|----------|----------------------|---------|
-| `PATCHCORE_DATA_ROOT` | yes | MVTec root (parent of `bottle/`, …) or VisA root per `patchcore-inspection` loaders |
-| `PATCHCORE_MODELS_RUN` | yes | Directory containing `mvtec_<class>/` or `visa_<class>/` PatchCore checkpoints |
+| Variable | Required for Stage 1 scoring | Meaning |
+|----------|------------------------------|---------|
+| `PATCHCORE_DATA_ROOT` | yes (Stage 1) | MVTec root (parent of `bottle/`, …) or VisA root per `patchcore-inspection` loaders |
+| `PATCHCORE_MODELS_RUN` | yes (Stage 1) | Directory containing `mvtec_<class>/` or `visa_<class>/` PatchCore checkpoints |
 | `PATCHCORE_DATASET` | no | `mvtec` (default) or `visa` |
 | `PATCHCORE_RAW_OUT` | no | Override raw output directory (default: `outputs/cached_results/raw_scores/patchcore`) |
 | `PATCHCORE_GPU` | no | GPU id (default `0`) |
@@ -26,6 +31,7 @@ This document describes **PatchCore** full-path entrypoints first. PromptAD and 
 | `PATCHCORE_FAISS_GPU` | no | Set to `1` to pass `--faiss-on-gpu` |
 | `PATCHCORE_INFERENCE_BATCH_SIZE` | no | Batch size (default `24`) |
 | `PATCHCORE_EXTRA_ARGS` | no | Space-separated extra CLI tokens for the score step (e.g. `--max-classes 2`) |
+| `PATCHCORE_CLASSES` | no | Comma-separated class subset for the score step (e.g. `bottle` for smoke tests) |
 
 ### Raw unified score files
 
@@ -33,41 +39,97 @@ After `scripts/run_patchcore_raw.sh`, the directory `outputs/cached_results/raw_
 
 - `patchcore_tta_scores.csv` — upstream per-image scores (identity + TTA views).
 - `unified_raw_scores.csv` — one row per image with columns including:
-  - `sample_id`, `label`, `identity_score`, `fused_score` (same as identity for PatchCore anomaly score),
+  - `sample_id`, `label`, `identity_score`, `base_score`, `fused_score` (PatchCore uses the identity view as the primary anomaly score),
   - `condition_scores` / `view_scores` (JSON with `identity`, `horizontal_flip`, `rotate_plus_5deg`, `rotate_minus_5deg`),
-  - `dataset`, `category`, `transform`, `config`, `image_path`.
-- `unified_raw_scores_long.csv` — long form with `transform` / `condition` per view.
+  - `dataset`, `category`, `transform`, `condition`, `config`, `image_path`.
+- `unified_raw_scores_long.csv` — long form with `transform` / `condition`, `condition_score` (and `score` alias), plus `base_score` / `fused_score` for traceability.
 
 ### Commands (acceptance)
 
 **1) Raw scoring + unified export only**
+
+`scripts/run_patchcore_raw.sh` **requires** `FULL_RUN=1` (it will exit otherwise).
 
 ```bash
 export PATCHCORE_DATA_ROOT=/path/to/mvtec_parent
 export PATCHCORE_MODELS_RUN=/path/to/patchcore_models/models   # example layout
 export PATCHCORE_DATASET=mvtec   # optional
 # export PATCHCORE_RESUME=1      # if continuing after partial class list
+# export PATCHCORE_CLASSES=bottle   # optional subset for smoke tests
 
 FULL_RUN=1 bash scripts/run_patchcore_raw.sh
 ```
 
-**2) Full appendix F pipeline (raw + analyze + figures)**
+**2) Stage 2 — Appendix F from cached raw evidence (analyze only)**
+
+After Stage 1 produced `unified_raw_scores_long.csv` (and `patchcore_tta_scores.csv`):
 
 ```bash
 export PATCHCORE_DATA_ROOT=...
 export PATCHCORE_MODELS_RUN=...
-
-FULL_RUN=1 bash scripts/reproduce_app_patchcore_tta.sh
+bash scripts/reproduce_app_patchcore_tta.sh
 ```
 
-`reproduce_app_patchcore_tta.sh` delegates to `src/experiments/app_patchcore_tta/run.sh`, which:
+`reproduce_app_patchcore_tta.sh` → `src/experiments/app_patchcore_tta/run.sh`:
 
-1. Runs `scripts/run_patchcore_raw.sh` (scores + unified tables).
-2. Runs `run_patchcore_tta_mechanism.py --step analyze` on `raw_scores/patchcore/patchcore_tta_scores.csv`.
-3. Copies generated PNG/PDF into `outputs/figures/app_patchcore_tta/`.
+1. If raw unified long exists: runs `run_patchcore_tta_mechanism.py --step analyze` (no scoring).
+2. Copies PNG/PDF into `outputs/figures/app_patchcore_tta/`, mirrors unified CSVs into `outputs/cached_results/app_patchcore_tta/`.
+3. If raw evidence is absent: fast path copies from `result_analysis/patchcore_tta/`. Use **`PATCHCORE_FROM_RAW=1`** to require raw files and error if missing.
 
 ### Notes and limitations
 
 - **First-time scores:** if `patchcore_tta_scores.csv` already exists in the raw output dir, the upstream script exits unless you set **`PATCHCORE_RESUME=1`** or delete the CSV.
 - **Hardware:** scoring requires PyTorch + GPU in typical setups; CPU-only may be partial or impractical — mark as **partial** if your environment cannot complete scoring.
 - **No edits** to `external/patchcore-inspection` logic beyond what already exists; wrappers live under `scripts/` and `src/experiments/app_patchcore_tta/`.
+- **Blocker / partial:** if `PATCHCORE_DATA_ROOT` or `PATCHCORE_MODELS_RUN` is wrong, scoring fails immediately (e.g. missing `mvtec_<class>/patchcore_params.pkl`). See **`docs/FULLPATH_PATCHCORE.md`** for the maintainer verification note.
+
+---
+
+## PaDiM (Section 3.1.2 + Appendix E, Protocol B raw)
+
+### Layout
+
+| Stage | Script / consumer | Output |
+|-------|---------------------|--------|
+| **1** | `FULL_RUN=1 bash scripts/run_padim_raw.sh` | Jobs under `PADIM_OUTPUT_ROOT/protocol_b_jobs/…`, then aggregated `outputs/cached_results/raw_scores/padim/`, `marginal_protocol_b.csv`, `mechanism_from_raw.csv` |
+| **2** | `bash scripts/reproduce_sec3_padim.sh` / `bash scripts/reproduce_app_padim_representation.sh` | Plots or copies **only** from existing `marginal_protocol_b.csv`, `mechanism_from_raw.csv`, or bundled stubs — **no** `run_padim_raw.sh` |
+
+### Environment variables
+
+| Variable | Required for `run_padim_raw.sh` | Meaning |
+|----------|----------------------------------|---------|
+| `FULL_RUN` | must be `1` | Gate for real inference |
+| `PADIM_DATA_ROOT` | yes | Dataset root passed to `padim_protocol_b_one_run.py --data_path` |
+| `PADIM_OUTPUT_ROOT` | yes | Writable root; jobs live under `.../protocol_b_jobs/` |
+| `PADIM_CLASSES` | yes | Comma-separated class names |
+| `PADIM_BACKBONES` | yes | Comma-separated `resnet18` and/or `wide_resnet50_2` |
+| `PADIM_SEEDS` | yes | Comma-separated integer seeds |
+| `PADIM_DATASET` | no | `mvtec` (default) or `visa` |
+| `PADIM_GPU` | no | Sets `CUDA_VISIBLE_DEVICES` (default `0`) |
+| `PADIM_FORCE` | no | `1` re-runs jobs even if `per_sample.csv` exists |
+| `PADIM_EXTRA_ARGS` | no | Space-separated extra CLI tokens (e.g. `--cov-float32 --max-train-images 350`) |
+
+### Commands
+
+```bash
+export PADIM_DATA_ROOT=/path/to/mvtec_or_visa
+export PADIM_OUTPUT_ROOT=/path/to/scratch_or_outputs/padim_runs
+export PADIM_CLASSES=bottle
+export PADIM_BACKBONES=resnet18
+export PADIM_SEEDS=444,555
+
+FULL_RUN=1 bash scripts/run_padim_raw.sh
+bash scripts/reproduce_sec3_padim.sh
+bash scripts/reproduce_app_padim_representation.sh
+```
+
+Appendix E Stage 2 consumes **`mechanism_from_raw.csv`** when present (produced at end of Stage 1 aggregation). That file is a **raw-score-level partial** summary (cross-seed |ΔAUROC| stats from the **configured** `PADIM_SEEDS`); it is **not** full appendix reproduction and **not** the **`padim_seed_killer_evidence_pipeline.py`** one-click chain; see **`docs/FULLPATH_PADIM.md`**.
+
+### Raw score columns (unified long)
+
+Includes at least: `sample_id`, `label`, `fused_score`, `view_id`, `condition`, `condition_score`, `dataset`, `category`, `backbone`, `seed`, `config`, `image_path`.
+
+### Notes
+
+- Default **fast paths** for sec3 / appendix E are unchanged (bundled stubs under `samples/fastpath/`).
+- The legacy **`run_padim_seed_killer_one_click.sh`** wide multi-setting sweep is **not** invoked from Stage 2 `run.sh`; Stage 1 scope is limited by `PADIM_CLASSES` / `PADIM_SEEDS` / `PADIM_BACKBONES`.

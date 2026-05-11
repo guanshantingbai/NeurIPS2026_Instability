@@ -47,6 +47,9 @@ outputs/cached_results/*
 !outputs/tables/.gitkeep
 !outputs/cached_results/.gitkeep
 
+# PaDiM Protocol B per-seed job dirs when PADIM_OUTPUT_ROOT points under outputs/
+outputs/padim_protocol_b_jobs/
+
 # Model weights / large binaries
 *.pth
 *.pt

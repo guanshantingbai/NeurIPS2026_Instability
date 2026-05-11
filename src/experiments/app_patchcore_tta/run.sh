@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Stage 2 only: never runs scripts/run_patchcore_raw.sh (Stage 1).
+# - If raw evidence exists (unified_raw_scores_long.csv), run analyze from patchcore_tta_scores.csv.
+# - Else copy bundled fast-path assets from result_analysis/patchcore_tta/.
+# - PATCHCORE_FROM_RAW=1 requires raw evidence; if missing, exit with hint to run Stage 1.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,24 +15,24 @@ mkdir -p outputs/figures/app_patchcore_tta outputs/cached_results/app_patchcore_
 
 RAW_SCORES_DIR="$REPO_ROOT/outputs/cached_results/raw_scores/patchcore"
 RAW_SCORES_CSV="$RAW_SCORES_DIR/patchcore_tta_scores.csv"
+UNIFIED_LONG="$RAW_SCORES_DIR/unified_raw_scores_long.csv"
 
-if [ "${FULL_RUN:-0}" = "1" ]; then
-  if [ -z "${PATCHCORE_DATA_ROOT:-}" ] || [ -z "${PATCHCORE_MODELS_RUN:-}" ]; then
-    echo "ERROR: FULL_RUN=1 requires PATCHCORE_DATA_ROOT and PATCHCORE_MODELS_RUN." >&2
-    exit 1
-  fi
-  echo "WARNING: FULL_RUN=1 runs PatchCore raw scoring + unified export + analyze (GPU / data)." >&2
-  bash "$REPO_ROOT/scripts/run_patchcore_raw.sh"
-
+if [ -f "$UNIFIED_LONG" ]; then
   if [ ! -f "$RAW_SCORES_CSV" ]; then
-    echo "ERROR: missing raw scores after run_patchcore_raw: $RAW_SCORES_CSV" >&2
+    echo "ERROR: found $UNIFIED_LONG but missing $RAW_SCORES_CSV (inconsistent Stage 1 output)." >&2
+    echo "       Re-run Stage 1: FULL_RUN=1 bash scripts/run_patchcore_raw.sh" >&2
     exit 1
   fi
-
+  if [ -z "${PATCHCORE_DATA_ROOT:-}" ] || [ -z "${PATCHCORE_MODELS_RUN:-}" ]; then
+    echo "ERROR: raw-derived Appendix F needs PATCHCORE_DATA_ROOT and PATCHCORE_MODELS_RUN (required by upstream analyze argparse)." >&2
+    exit 1
+  fi
+  echo "app_patchcore_tta: Stage 2 from cached raw evidence (analyze only, no scoring)."
   OUT_ANALYSIS="$REPO_ROOT/outputs/cached_results/app_patchcore_tta"
   mkdir -p "$OUT_ANALYSIS" "$REPO_ROOT/outputs/figures/app_patchcore_tta"
 
-  python -m src.models.patchcore_adapter.run_patchcore "scripts/run_patchcore_tta_mechanism.py" \
+  PY="${PYTHON:-python3}"
+  "$PY" -m src.models.patchcore_adapter.run_patchcore scripts/run_patchcore_tta_mechanism.py \
     --step analyze \
     --scores-csv "$RAW_SCORES_CSV" \
     --out-dir "$OUT_ANALYSIS" \
@@ -42,14 +46,28 @@ if [ "${FULL_RUN:-0}" = "1" ]; then
     cp -f "$f" "$REPO_ROOT/outputs/figures/app_patchcore_tta/"
   done
 
-  echo "app_patchcore_tta: FULL_RUN analysis outputs under $OUT_ANALYSIS and figures copied to outputs/figures/app_patchcore_tta/"
+  for f in unified_raw_scores.csv unified_raw_scores_long.csv; do
+    if [ -f "$RAW_SCORES_DIR/$f" ]; then
+      cp -f "$RAW_SCORES_DIR/$f" "$OUT_ANALYSIS/"
+    fi
+  done
+
+  echo "app_patchcore_tta: Stage 2 OK (raw evidence -> analyze -> outputs)."
   exit 0
+fi
+
+if [ "${PATCHCORE_FROM_RAW:-0}" = "1" ]; then
+  echo "ERROR: PATCHCORE_FROM_RAW=1 but raw evidence missing: $UNIFIED_LONG" >&2
+  echo "       Run Stage 1 first: FULL_RUN=1 bash scripts/run_patchcore_raw.sh" >&2
+  echo "       (with PATCHCORE_DATA_ROOT, PATCHCORE_MODELS_RUN, etc.; see docs/FULLPATH_PATCHCORE.md)" >&2
+  exit 1
 fi
 
 SRC_DIR="$REPO_ROOT/result_analysis/patchcore_tta"
 if [ ! -d "$SRC_DIR" ]; then
   echo "ERROR: Appendix F fast path requires $SRC_DIR (cached lightweight CSV/figures)." >&2
-  echo "       For model-level rerun: FULL_RUN=1 with PATCHCORE_DATA_ROOT and PATCHCORE_MODELS_RUN." >&2
+  echo "       For Stage 1 raw extraction: FULL_RUN=1 bash scripts/run_patchcore_raw.sh" >&2
+  echo "       Then Stage 2 will pick up outputs/cached_results/raw_scores/patchcore/unified_raw_scores_long.csv" >&2
   exit 1
 fi
 

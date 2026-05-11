@@ -9,7 +9,7 @@ from __future__ import annotations
 def main() -> None:
     raise SystemExit(
         "compute_padim_marginal_views.py is not part of the fast path. "
-        "Use src/experiments/sec3_padim_observation/run.sh (default) or FULL_RUN=1 for full PaDiM."
+        "Use src/experiments/sec3_padim_observation/run.sh (default) or FULL_RUN=1 with PADIM_* and scripts/run_padim_raw.sh (see docs/FULLPATH_PADIM.md)."
     )
 
 

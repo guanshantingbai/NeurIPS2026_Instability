@@ -1,28 +1,80 @@
 # Reproduce Guide
 
-This repository reproduces results by paper sections.
+This repository reproduces results by paper sections using a **two-stage** layout.
 
-## Fast path (default)
+## Stage 1 — model-level evidence extraction
 
-By default, `scripts/reproduce_main.sh` and `scripts/reproduce_appendix.sh` run **only the fast path**:
+Runs **real** upstream inference / scoring (GPU + data as applicable). **Orchestration scripts `scripts/reproduce_*.sh` never invoke Stage 1.**
 
-- No full GPU multi-seed PromptAD or PaDiM pipelines.
-- Appendix F copies lightweight CSV/figures from `result_analysis/patchcore_tta/` (must exist).
+| Model | Script | Typical outputs |
+|-------|--------|-------------------|
+| PatchCore | `FULL_RUN=1 bash scripts/run_patchcore_raw.sh` | `outputs/cached_results/raw_scores/patchcore/` (`patchcore_tta_scores.csv`, `unified_raw_scores_long.csv`, …) |
+| PaDiM | `FULL_RUN=1 bash scripts/run_padim_raw.sh` | `PADIM_OUTPUT_ROOT/protocol_b_jobs/…`, then aggregated `outputs/cached_results/raw_scores/padim/`, `marginal_protocol_b.csv`, `mechanism_from_raw.csv` |
+
+See **`docs/MODEL_REPRODUCTION.md`**, **`docs/FULLPATH_PATCHCORE.md`**, and **`docs/FULLPATH_PADIM.md`** for environment variables and caveats.
+
+## Stage 2 — section-level analysis reproduction
+
+`scripts/reproduce_*.sh` and section `run.sh` files **only** read existing **raw scores** or **cached** CSV/figures. They **do not** call `run_patchcore_raw.sh` or `run_padim_raw.sh`, and **`FULL_RUN=1` does not change that.**
+
+| Section | Stage 2 script |
+|---------|----------------|
+| Appendix F (PatchCore + TTA) | `bash scripts/reproduce_app_patchcore_tta.sh` |
+| Section 3.1.2 (PaDiM) | `bash scripts/reproduce_sec3_padim.sh` |
+| Appendix E (PaDiM representation) | `bash scripts/reproduce_app_padim_representation.sh` |
+
+### Raw-derived vs fast path (Stage 2)
+
+- **PatchCore Appendix F:** if `outputs/cached_results/raw_scores/patchcore/unified_raw_scores_long.csv` exists, runs **analyze only** (needs `PATCHCORE_DATA_ROOT`, `PATCHCORE_MODELS_RUN` for upstream CLI). Otherwise copies from `result_analysis/patchcore_tta/`. Set **`PATCHCORE_FROM_RAW=1`** to **require** raw evidence and error if it is missing.
+- **PaDiM sec3:** if `outputs/cached_results/sec3_padim/marginal_protocol_b.csv` exists, plots only. Else uses bundled stubs under `samples/fastpath/`. Set **`PADIM_FROM_RAW=1`** to require raw-derived artifacts and error if missing (see `docs/FULLPATH_PADIM.md`).
+- **PaDiM Appendix E:** if `outputs/cached_results/app_padim_representation/mechanism_from_raw.csv` exists, copies to tables. Else bundled stub. **`PADIM_FROM_RAW=1`** requires that CSV.
+
+## Fast path (default Stage 2)
+
+By default, `scripts/reproduce_main.sh` and `scripts/reproduce_appendix.sh` run **Stage 2** with **bundled stubs** where raw evidence is absent:
+
+- No PatchCore / PaDiM **scoring** from `reproduce_*`.
+- Appendix F uses `result_analysis/patchcore_tta/` when unified raw is absent.
 - `PYTHONPATH` is set automatically by each `run.sh` / top-level script (repo root).
 
-Full model-level reruns require **`FULL_RUN=1`** on the relevant `run.sh` (see section READMEs and `docs/REPRODUCIBILITY_STATUS.md`).
+## Example full flows (two-stage)
 
-PatchCore model-level steps are documented in **`docs/MODEL_REPRODUCTION.md`** (`scripts/run_patchcore_raw.sh`, env vars, raw score layout).
+**a) PatchCore Appendix F**
+
+```bash
+# Stage 1 (GPU + data)
+export PATCHCORE_DATA_ROOT=...
+export PATCHCORE_MODELS_RUN=...
+FULL_RUN=1 bash scripts/run_patchcore_raw.sh
+
+# Stage 2 (analyze + figures from cached raw; needs same env for argparse)
+export PATCHCORE_DATA_ROOT=...
+export PATCHCORE_MODELS_RUN=...
+bash scripts/reproduce_app_patchcore_tta.sh
+```
+
+**b) PaDiM Section 3.1.2**
+
+```bash
+# Stage 1
+export PADIM_DATA_ROOT=...
+export PADIM_OUTPUT_ROOT=...
+export PADIM_CLASSES=bottle
+export PADIM_BACKBONES=resnet18
+export PADIM_SEEDS=444,555
+FULL_RUN=1 bash scripts/run_padim_raw.sh
+
+# Stage 2
+bash scripts/reproduce_sec3_padim.sh
+```
 
 ## Main Paper
-
-Run all main-paper pipelines:
 
 ```bash
 bash scripts/reproduce_main.sh
 ```
 
-Run section-specific pipelines:
+Section-specific:
 
 ```bash
 bash scripts/reproduce_sec3_promptad.sh
@@ -32,17 +84,15 @@ bash scripts/reproduce_sec4_systematic.sh
 
 ## Appendix
 
-Run all appendix pipelines:
-
 ```bash
 bash scripts/reproduce_appendix.sh
 ```
 
-Run section-specific appendix pipelines:
+Section-specific appendix:
 
 ```bash
 bash src/experiments/app_promptad_generalization/run.sh
-bash src/experiments/app_padim_representation/run.sh
+bash scripts/reproduce_app_padim_representation.sh
 bash scripts/reproduce_app_patchcore_tta.sh
 bash src/experiments/app_signal_comparison/run.sh
 ```
@@ -59,8 +109,6 @@ bash src/experiments/app_signal_comparison/run.sh
 
 ## Cleanup
 
-Remove generated outputs while keeping tracked examples:
-
 ```bash
 bash scripts/clean_outputs.sh
 ```
@@ -68,4 +116,4 @@ bash scripts/clean_outputs.sh
 ## Notes
 
 - Some section scripts call external adapters and may require local paths in configs.
-- For large experiments, run section scripts independently and merge artifacts later.
+- For large experiments, run Stage 1 independently, then Stage 2, and merge artifacts later.

@@ -21,16 +21,19 @@ Each section has explicit inputs, outputs, scripts, and commands.
 ## Quick Start
 
 1. Read `docs/ENVIRONMENT.md` and `docs/DATASET.md`.
-2. Check task-to-script mapping in `docs/FIGURE_MAP.md` (fast path vs full run).
-3. Run the **default fast path** (bundled stubs + cached PatchCore TTA assets; no full GPU reruns):
+2. Check task-to-script mapping in `docs/FIGURE_MAP.md` (fast path vs raw-derived Stage 2).
+3. **Two-stage layout** (see `docs/REPRODUCE.md`):
+   - **Stage 1 — model evidence:** `scripts/run_patchcore_raw.sh`, `scripts/run_padim_raw.sh` (each requires `FULL_RUN=1` plus data/env; **not** invoked by `reproduce_*`).
+   - **Stage 2 — section reproduction:** `scripts/reproduce_app_patchcore_tta.sh`, `scripts/reproduce_sec3_padim.sh`, `scripts/reproduce_app_padim_representation.sh` (consume existing raw/cached assets only; **no** scoring).
+4. Run the **default Stage 2 fast path** (bundled stubs + cached PatchCore TTA assets where raw scores are absent):
    - `bash scripts/reproduce_main.sh`
    - `bash scripts/reproduce_appendix.sh`
-4. Full paper reruns require `FULL_RUN=1` and external data; see `docs/REPRODUCIBILITY_STATUS.md`.
+5. End-to-end paper reruns: run Stage 1 with real data, then Stage 2; see `docs/REPRODUCIBILITY_STATUS.md`.
 
 ## Current Scope
 
-- Section-level scripts are **honest fast paths** by default (exit non-zero if required cached inputs are missing).
-- **`FULL_RUN=1`** enables heavy external pipelines (PromptAD / PaDiM / PatchCore / strengthening); not validated in CI by default.
+- Section-level `reproduce_*` scripts are **Stage 2 only** (cached / raw-derived inputs; exit non-zero if required inputs are missing).
+- **`FULL_RUN=1`** on **`run_*_raw.sh`** runs Stage 1 model extraction for PatchCore / PaDiM; **`reproduce_*` does not auto-call those scripts**.
 
 ## Data Policy
 

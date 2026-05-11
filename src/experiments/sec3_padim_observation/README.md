@@ -20,4 +20,4 @@ Default (**fast path**): copies bundled CSV stubs; does **not** run PaDiM Protoc
 bash src/experiments/sec3_padim_observation/run.sh
 ```
 
-**Full run:** `FULL_RUN=1 bash .../run.sh` (long GPU / multi-seed).
+**Two-stage:** **Stage 1** — `FULL_RUN=1 bash scripts/run_padim_raw.sh` with `PADIM_*`. **Stage 2** — `bash scripts/reproduce_sec3_padim.sh` (plots from `marginal_protocol_b.csv` or bundled stub; **never** runs Stage 1). See **`docs/FULLPATH_PADIM.md`**, **`docs/REPRODUCE.md`**.

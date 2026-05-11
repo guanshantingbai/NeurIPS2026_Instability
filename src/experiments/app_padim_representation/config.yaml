@@ -1,0 +1,4 @@
+section: app_padim_representation
+output_figures: outputs/figures/app_padim_representation
+output_tables: outputs/tables/app_padim_representation
+output_cache: outputs/cached_results/app_padim_representation

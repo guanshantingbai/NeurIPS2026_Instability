@@ -1,0 +1,6 @@
+section: sec3_promptad
+data_root: ${DATA_ROOT:-/path/to/data}
+output_figures: outputs/figures/sec3_promptad
+output_cache: outputs/cached_results/sec3_promptad
+near_auroc_gap: 0.002
+seed_list: [0, 1, 2, 3, 4]

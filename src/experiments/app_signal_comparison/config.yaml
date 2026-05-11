@@ -1,0 +1,4 @@
+section: app_signal_comparison
+output_figures: outputs/figures/app_signal_comparison
+output_tables: outputs/tables/app_signal_comparison
+output_cache: outputs/cached_results/app_signal_comparison

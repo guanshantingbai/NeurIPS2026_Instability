@@ -1,0 +1,4 @@
+section: app_patchcore_tta
+source_lightweight_results: result_analysis/patchcore_tta
+output_figures: outputs/figures/app_patchcore_tta
+output_cache: outputs/cached_results/app_patchcore_tta

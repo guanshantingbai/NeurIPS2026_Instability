@@ -1,0 +1,1 @@
+"""PaDiM adapter package."""

@@ -1,0 +1,3 @@
+run_a,run_b,auroc_gap,instability_gap
+mvtec__bottle__k1_s111,mvtec__bottle__k1_s222,0.0005,0.12
+mvtec__bottle__k1_s111,mvtec__bottle__k1_s333,0.0008,0.09

@@ -31,15 +31,21 @@ mlruns/
 .ipynb_checkpoints/
 
 # Generic experiment artifacts
-**/outputs/
 **/output/
 **/results/
 **/checkpoints/
 **/ckpt/
 **/ckpts/
 **/runs/
-**/experiments/
 **/exp/
+
+# Managed outputs (keep folder skeleton)
+outputs/figures/*
+outputs/tables/*
+outputs/cached_results/*
+!outputs/figures/.gitkeep
+!outputs/tables/.gitkeep
+!outputs/cached_results/.gitkeep
 
 # Model weights / large binaries
 *.pth
@@ -68,10 +74,16 @@ paper_figures.zip
 PromptAD/result_*/
 PromptAD/logs/
 PromptAD/pairwise_penalty_analysis_out/
+external/PromptAD/result_*/
+external/PromptAD/logs/
+external/PromptAD/pairwise_penalty_analysis_out/
 
 patchcore-inspection/models/
 patchcore-inspection/results/
 patchcore-inspection/logs/
+external/patchcore-inspection/models/
+external/patchcore-inspection/results/
+external/patchcore-inspection/logs/
 
 PaDiM-Anomaly-Detection-Localization-master/mvtec_result_*/
 PaDiM-Anomaly-Detection-Localization-master/visa_result_*/
@@ -79,3 +91,9 @@ PaDiM-Anomaly-Detection-Localization-master/protocol_*/
 PaDiM-Anomaly-Detection-Localization-master/padim_result_seed_search*/
 PaDiM-Anomaly-Detection-Localization-master/result_analysis/
 PaDiM-Anomaly-Detection-Localization-master/figures/
+external/PaDiM-Anomaly-Detection-Localization-master/mvtec_result_*/
+external/PaDiM-Anomaly-Detection-Localization-master/visa_result_*/
+external/PaDiM-Anomaly-Detection-Localization-master/protocol_*/
+external/PaDiM-Anomaly-Detection-Localization-master/padim_result_seed_search*/
+external/PaDiM-Anomaly-Detection-Localization-master/result_analysis/
+external/PaDiM-Anomaly-Detection-Localization-master/figures/

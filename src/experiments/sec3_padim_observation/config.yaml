@@ -1,0 +1,5 @@
+section: sec3_padim
+data_root: ${DATA_ROOT:-/path/to/data}
+output_figures: outputs/figures/sec3_padim
+output_cache: outputs/cached_results/sec3_padim
+near_auroc_gap: 0.002

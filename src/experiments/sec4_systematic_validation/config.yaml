@@ -1,0 +1,7 @@
+section: sec4_systematic
+data_root: ${DATA_ROOT:-/path/to/data}
+output_figures: outputs/figures/sec4_systematic
+output_tables: outputs/tables/sec4_systematic
+output_cache: outputs/cached_results/sec4_systematic
+near_auroc_gap: 0.002
+bootstrap_rounds: 1000

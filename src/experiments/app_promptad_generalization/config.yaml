@@ -1,0 +1,4 @@
+section: app_promptad_generalization
+output_figures: outputs/figures/app_promptad_generalization
+output_tables: outputs/tables/app_promptad_generalization
+output_cache: outputs/cached_results/app_promptad_generalization

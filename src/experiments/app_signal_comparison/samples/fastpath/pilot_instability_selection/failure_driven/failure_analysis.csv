@@ -1,0 +1,7 @@
+dataset,class,k,seed_auc,failure,epsilon,coverage,instability_auc_seed
+mvtec,bottle,1,111,True,0.002,0.7,0.22
+mvtec,bottle,1,111,True,0.002,0.7,0.24
+mvtec,bottle,1,111,False,0.002,0.7,0.08
+mvtec,bottle,1,111,False,0.002,0.7,0.07
+mvtec,bottle,1,111,True,0.005,0.8,0.20
+mvtec,bottle,1,111,False,0.005,0.8,0.09

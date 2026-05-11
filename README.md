@@ -1,44 +1,42 @@
 # NeurIPS2026_Instability
 
-Official repository for the NeurIPS 2026 submission on instability analysis in industrial anomaly detection.
+Paper-section-oriented reproducibility repository for the NeurIPS 2026 instability paper.
 
-## Current Release Status
+## Design Principle
 
-This is an initial public release for submission-time code availability.
-The repository is being cleaned up and documented incrementally.
+This repository is organized by paper sections and appendix tasks, not by model families.
+Each section has explicit inputs, outputs, scripts, and commands.
 
-Current focus:
-- publish core source code;
-- exclude large experiment artifacts from version control;
-- provide a clear path toward full reproducibility.
+## Repository Layout
 
-## Included in This Initial Version
+- `docs/`: reproducibility guide, figure/table map, dataset and environment docs.
+- `scripts/`: top-level orchestration scripts for main paper and appendix runs.
+- `src/core/`: shared analysis logic (pairwise, instability, risk-coverage, metrics).
+- `src/experiments/`: section-level experiment packages.
+- `src/models/*_adapter/`: thin adapters to external model repositories.
+- `external/`: third-party model code (PromptAD, PaDiM, PatchCore).
+- `outputs/`: generated figures/tables/cached lightweight results.
+- `figures/`: curated figures grouped by main paper vs appendix.
 
-- `Figures/`: lightweight figure assets used in analysis notes.
-- `result_analysis/`: project-level result aggregation scripts/assets.
-- `docs/`: repository notes and release planning.
+## Quick Start
 
-## Planned Source Integration (Next Update)
+1. Read `docs/ENVIRONMENT.md` and `docs/DATASET.md`.
+2. Check task-to-script mapping in `docs/FIGURE_MAP.md` (fast path vs full run).
+3. Run the **default fast path** (bundled stubs + cached PatchCore TTA assets; no full GPU reruns):
+   - `bash scripts/reproduce_main.sh`
+   - `bash scripts/reproduce_appendix.sh`
+4. Full paper reruns require `FULL_RUN=1` and external data; see `docs/REPRODUCIBILITY_STATUS.md`.
 
-The following codebases are prepared locally and will be integrated in a follow-up cleanup pass:
-- `PromptAD/`
-- `patchcore-inspection/`
-- `PaDiM-Anomaly-Detection-Localization-master/`
+## Current Scope
 
-## Excluded in This Initial Version
+- Section-level scripts are **honest fast paths** by default (exit non-zero if required cached inputs are missing).
+- **`FULL_RUN=1`** enables heavy external pipelines (PromptAD / PaDiM / PatchCore / strengthening); not validated in CI by default.
 
-To keep the repository lightweight and clone-friendly, large generated artifacts are ignored:
-- training logs and temporary outputs;
-- model checkpoints;
-- large result folders;
-- packaged figure archives and other large binaries.
+## Data Policy
 
-See `.gitignore` for exact rules.
-
-## Reproducibility Plan
-
-A progressively improved reproducibility package (environment setup, data preparation, one-click scripts for key tables/figures) will be added in follow-up updates.
+This repository intentionally excludes large datasets, model checkpoints, and full intermediate outputs.
+Only lightweight CSV, plotting scripts, sample outputs, and reproducibility documentation are tracked.
 
 ## Contact
 
-For questions, please open an issue in this repository.
+For questions or issues, please open a GitHub issue.

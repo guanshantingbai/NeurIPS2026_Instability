@@ -1,0 +1,3 @@
+setting,seed,auroc,instability
+mvtec__screw__resnet18,111,0.7629,0.0967
+mvtec__screw__resnet18,222,0.7610,0.1012

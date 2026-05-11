@@ -49,7 +49,7 @@ Commands were run from repo root in this order (after `bash scripts/clean_output
 ### Missing data or external dependency (full rerun)
 
 - **Datasets** (MVTec / VisA, etc.) for any `FULL_RUN` PatchCore / PromptAD / PaDiM job.
-- **`FULL_RUN=1` + Appendix F:** requires `PATCHCORE_DATA_ROOT` and `PATCHCORE_MODELS_RUN` to call `run_patchcore_tta_mechanism.py` (default fast path **does not** call it).
+- **`FULL_RUN=1` + Appendix F:** requires `PATCHCORE_DATA_ROOT` and `PATCHCORE_MODELS_RUN`. Runs `scripts/run_patchcore_raw.sh` (scores → `outputs/cached_results/raw_scores/patchcore/` + unified CSVs), then `run_patchcore_tta_mechanism.py --step analyze` into `outputs/cached_results/app_patchcore_tta/` and copies figures to `outputs/figures/app_patchcore_tta/`. Default fast path **does not** invoke GPU scoring.
 - **`FULL_RUN=1` + Appendix C/E:** must pass valid subcommands/args to upstream CLIs (e.g. `phase3 --proxy u6`); invoking with **no** args is expected to **fail** with usage error.
 - **`FULL_RUN=1` + Appendix G:** set `PROMPTAD_ROOT` / `PILOT_DIR_OVERRIDE` if not using defaults under `external/PromptAD/`.
 
@@ -59,7 +59,13 @@ Commands were run from repo root in this order (after `bash scripts/clean_output
 - Removed `|| true` masking; subprocess failures propagate.
 - Default paths in `supplementary_signal_baselines.py` use repo-relative defaults; bundled stub pilot under `src/experiments/app_signal_comparison/samples/fastpath/`.
 - PaDiM `padim_seed_killer_evidence_pipeline.py` and `padim_seed_killer_appendix_pair_figures.py` use `external/PromptAD` for shared imports.
-- Appendix F fast path: **copy only**; optional full run gated on `FULL_RUN=1` + env vars.
+- Appendix F fast path: **copy only** from `result_analysis/patchcore_tta/`; full path uses `scripts/run_patchcore_raw.sh` + analyze (see `docs/MODEL_REPRODUCTION.md`).
+
+## PatchCore full path (implemented; not GPU-verified in-repo)
+
+- **Scripts:** `scripts/run_patchcore_raw.sh`, `FULL_RUN=1 bash scripts/reproduce_app_patchcore_tta.sh`.
+- **Raw + unified outputs:** `outputs/cached_results/raw_scores/patchcore/` (`patchcore_tta_scores.csv`, `unified_raw_scores.csv`, `unified_raw_scores_long.csv`).
+- **Status:** **partial** in the sense that this environment did not re-run end-to-end GPU scoring against your datasets; success depends on local PatchCore checkpoints, FAISS, and CUDA. If scoring fails, exit codes are non-zero (no silent fallback to fast-path copies).
 
 ## Remaining blockers (honest list)
 

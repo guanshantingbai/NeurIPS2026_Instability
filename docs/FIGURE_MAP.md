@@ -20,7 +20,7 @@ Full paper figures require **`FULL_RUN=1`** on the relevant section (and data / 
 |----------|--------|-------------------|
 | C | `src/experiments/app_promptad_generalization/run.sh` | `outputs/tables/app_promptad_generalization/spearman_stub.csv`, `outputs/figures/app_promptad_generalization/fastpath_done.txt` |
 | E | `src/experiments/app_padim_representation/run.sh` | `outputs/tables/app_padim_representation/mechanism_stub.csv`, `outputs/figures/app_padim_representation/fastpath_done.txt` |
-| F | `src/experiments/app_patchcore_tta/run.sh` | `outputs/cached_results/app_patchcore_tta/*.csv`, `outputs/figures/app_patchcore_tta/*.png`, `*.pdf` (copied from `result_analysis/patchcore_tta/`) |
+| F | `src/experiments/app_patchcore_tta/run.sh` | **Fast path:** same files copied from `result_analysis/patchcore_tta/`. **Full path (`FULL_RUN=1`):** raw scores under `outputs/cached_results/raw_scores/patchcore/` (see `docs/MODEL_REPRODUCTION.md`), then analysis under `outputs/cached_results/app_patchcore_tta/` + figures in `outputs/figures/app_patchcore_tta/`. |
 | G | `src/experiments/app_signal_comparison/run.sh` | `outputs/figures/app_signal_comparison/*.csv`, `*.png`, `*.pdf`; mirrored CSV under `outputs/tables/app_signal_comparison/` |
 
 ## Orchestration

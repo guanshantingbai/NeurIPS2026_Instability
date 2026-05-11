@@ -12,6 +12,8 @@ By default, `scripts/reproduce_main.sh` and `scripts/reproduce_appendix.sh` run 
 
 Full model-level reruns require **`FULL_RUN=1`** on the relevant `run.sh` (see section READMEs and `docs/REPRODUCIBILITY_STATUS.md`).
 
+PatchCore model-level steps are documented in **`docs/MODEL_REPRODUCTION.md`** (`scripts/run_patchcore_raw.sh`, env vars, raw score layout).
+
 ## Main Paper
 
 Run all main-paper pipelines:

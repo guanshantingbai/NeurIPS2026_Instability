@@ -141,7 +141,7 @@ git add -n . | head -200
    `FULL_RUN=1 PROMPTAD_MODE=export PROMPTAD_OUTPUT_ROOT=... bash scripts/run_promptad_raw.sh`  
    and re-run `reproduce_sec3_promptad.sh` and `reproduce_sec4_systematic.sh` to validate the **pairwise** Sec 3 / Sec 4 CSV + figure outputs.
 2. **Optional:** `SEC3_PROMPTAD_ALLOW_STUB=1 bash scripts/reproduce_sec3_promptad.sh` to get exit 0 for CI without claiming raw reproduction (still **stub**).
-3. **`reproduce_main.sh`:** today it fails if Sec 3.1.1 fails; orchestration is honest but **blocks** “all green” without raw or stub env.
+3. **`reproduce_main.sh`:** fails if Sec 3.1.1 fails when caches are missing; with **existing** Sec3/Sec4 from-raw artifacts it can **skip** heavy steps (see **§14**; `FORCE_REBUILD=1` forces full recompute).
 4. **PaDiM / PatchCore Stage 1:** run only when data and model roots are known; record a new validation row when done.
 5. **Pair sampling (large runs):** set `SEC3_PROMPTAD_MAX_PAIRS_PER_SETTING` / `SEC4_MAX_PAIRS_PER_SETTING` (and optional `SEC3_PROMPTAD_PAIR_SAMPLING_SEED`, `SEC4_PAIR_SAMPLING_SEED`) before `bash src/experiments/sec3_promptad_observation/run.sh` and `sec4_systematic_validation/run.sh`; see **§9.5**. **On-host PromptAD loops:** **§11** (2 seeds), **§12** (5 seeds), **§13** (27-setting medium grid + resume/status tooling).
 
@@ -356,3 +356,42 @@ Stage 2 env: **`SEC3_PROMPTAD_MAX_PAIRS_PER_SETTING=200000`**, **`SEC4_MAX_PAIRS
 
 - **Verified:** multi-class × multi-shot × multi-seed **27-cell** PromptAD full path with **resume-aware** Stage 1, status CSV, unified raw refresh, and downstream Sec 3 / Sec 4 / main driver.
 - **Not verified:** full **81-setting** grid, VisA, or `Epoch=100` training parity.
+
+---
+
+## 14. Full-grid PromptAD (Stage 1 + Sec3 + Sec4 from raw) and `reproduce_main.sh` cache-skip (2026-05-12)
+
+This subsection records **two different things** and avoids conflating them:
+
+1. **Earlier on-host work (not repeated in this subsection):** a **full-grid** PromptAD Stage 1 export plus downstream **Sec 3.1.1 from unified raw** and **Sec 4 systematic from PromptAD unified raw (pairwise)** were brought to completion under the project’s usual `outputs/` layout (including `outputs/cached_results/raw_scores/promptad/unified_raw_scores_{wide,long}.csv`, `outputs/cached_results/sec3_promptad/pairwise_metrics.csv` at **~15M data-row scale**, and `outputs/cached_results/sec4_systematic/` with `outputs/figures/sec4_systematic/from_promptad_raw_done.txt`). That work is **not** re-derived or re-timed here; see **`docs/FULLPATH_PROMPTAD.md`** / **`docs/PROMPTAD_RESULT_RECOVERY.md`** for orchestration and recovery notes.
+
+2. **This validation pass:** only **`scripts/reproduce_main.sh`** was executed with **cache-aware skips** so that **existing** Sec3 / Sec4 from-raw markers and cache files **do not** trigger another **15M-row** Sec3 pairwise rebuild or a full Sec4 from-raw recompute.
+
+### 14.1 `reproduce_main.sh` behavior (cached path)
+
+| Rule | Effect |
+|------|--------|
+| If `outputs/figures/sec3_promptad/from_raw_done.txt` **and** `outputs/cached_results/sec3_promptad/pairwise_metrics.csv` exist, and **`FORCE_REBUILD` is not `1`** | **Skip** `reproduce_sec3_promptad.sh` (prints `[main] SKIP reproduce_sec3_promptad.sh …`). |
+| If `outputs/figures/sec4_systematic/from_promptad_raw_done.txt` **and** `outputs/cached_results/sec4_systematic/sec4_systematic_from_raw_summary.json` exist, and **`FORCE_REBUILD` is not `1`** | **Skip** `reproduce_sec4_systematic.sh` (prints `[main] SKIP reproduce_sec4_systematic.sh …`). |
+| **`FORCE_REBUILD=1`** | **Force** both scripts to run (same as before the skip logic when caches are absent). |
+
+`reproduce_sec3_padim.sh` is **unchanged** (still runs every time).
+
+### 14.2 Command and outcome (this pass)
+
+```bash
+PYTHONUNBUFFERED=1 bash scripts/reproduce_main.sh 2>&1 | tee outputs/reproduce_main_cached_validation.log
+```
+
+| Check | Result |
+|--------|--------|
+| **Exit code** | **0** |
+| **Wall time** | **~0.4 s** (order of **sub-second**; dominated by PaDiM fast path, not Sec3 / Sec4) |
+| **Sec3 large pairwise table** | **Not** recomputed — log contains **`SKIP reproduce_sec3_promptad.sh`** and **no** `wrote … pairwise_metrics.csv` from Sec3 |
+| **Sec4 from-raw pipeline** | **Not** rerun — log contains **`SKIP reproduce_sec4_systematic.sh`** |
+| **Log file** | `outputs/reproduce_main_cached_validation.log` (**`*.log` is gitignored**; do not commit `outputs/`) |
+
+### 14.3 Honesty
+
+- **This pass does not claim** that any **large** Sec3 / Sec4 tables were **recomputed**; it only confirms that **`reproduce_main.sh` succeeds** when those artifacts **already** exist and the driver **skips** the heavy steps.
+- **Full-grid Stage 1 / Sec3 / Sec4 completion** is described above as **prior** on-host state, not as something re-executed for §14.2.

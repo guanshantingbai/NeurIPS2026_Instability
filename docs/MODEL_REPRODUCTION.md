@@ -4,10 +4,11 @@
 
 **Stage 2** — `scripts/reproduce_app_patchcore_tta.sh`, `scripts/reproduce_sec3_padim.sh`, `scripts/reproduce_app_padim_representation.sh` and matching `run.sh` files: **consume** existing raw or cached artifacts only; **never** invoke Stage 1. Setting **`FULL_RUN=1` alone does not trigger** `run_*_raw.sh` from `reproduce_*`.
 
-This document describes **PatchCore** and **PaDiM** Stage 1 / Stage 2 entrypoints. PromptAD-only flows are not detailed here.
+This document describes **PatchCore**, **PaDiM**, and **PromptAD Stage 1** entrypoints (PromptAD Stage 2 section wiring is unchanged in this pass).
 
 - PatchCore: **`docs/FULLPATH_PATCHCORE.md`**
 - PaDiM: **`docs/FULLPATH_PADIM.md`**
+- PromptAD: **`docs/FULLPATH_PROMPTAD.md`**
 
 ## PatchCore (Appendix F + raw scores)
 
@@ -133,3 +134,16 @@ Includes at least: `sample_id`, `label`, `fused_score`, `view_id`, `condition`, 
 
 - Default **fast paths** for sec3 / appendix E are unchanged (bundled stubs under `samples/fastpath/`).
 - The legacy **`run_padim_seed_killer_one_click.sh`** wide multi-setting sweep is **not** invoked from Stage 2 `run.sh`; Stage 1 scope is limited by `PADIM_CLASSES` / `PADIM_SEEDS` / `PADIM_BACKBONES`.
+
+---
+
+## PromptAD (Stage 1 raw evidence — Section 3.1.1 / 4 / Appendix C/G **not** refactored here)
+
+| Stage | Script | Output |
+|-------|--------|--------|
+| **1** | `FULL_RUN=1 bash scripts/run_promptad_raw.sh` | `outputs/cached_results/raw_scores/promptad/` (`unified_raw_scores_wide.csv`, `unified_raw_scores_long.csv`, `manifest.json`) from existing `CLS-*-per_sample.csv` (**export** mode) and/or optional **train**/**infer** loops |
+| **2** | existing `reproduce_*` / section `run.sh` | Unchanged in this pass — still fast-path stubs unless separately wired to consume raw scores later |
+
+Details: **`docs/FULLPATH_PROMPTAD.md`**. Adapter: `python -m src.models.promptad_adapter.run_promptad …`; exporter: `src/models/promptad_adapter/promptad_export_unified_raw.py`.
+
+**Section 3.1.1 (Stage 2):** `src/experiments/sec3_promptad_observation/run.sh` consumes `outputs/cached_results/raw_scores/promptad/unified_raw_scores_{wide,long}.csv` via `analyze_sec3_promptad_from_raw.py` (no PromptAD train/infer). Optional stub: `SEC3_PROMPTAD_ALLOW_STUB=1`.

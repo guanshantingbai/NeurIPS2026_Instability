@@ -10,6 +10,7 @@ Runs **real** upstream inference / scoring (GPU + data as applicable). **Orchest
 |-------|--------|-------------------|
 | PatchCore | `FULL_RUN=1 bash scripts/run_patchcore_raw.sh` | `outputs/cached_results/raw_scores/patchcore/` (`patchcore_tta_scores.csv`, `unified_raw_scores_long.csv`, …) |
 | PaDiM | `FULL_RUN=1 bash scripts/run_padim_raw.sh` | `PADIM_OUTPUT_ROOT/protocol_b_jobs/…`, then aggregated `outputs/cached_results/raw_scores/padim/`, `marginal_protocol_b.csv`, `mechanism_from_raw.csv` |
+| PromptAD | `FULL_RUN=1 bash scripts/run_promptad_raw.sh` | `outputs/cached_results/raw_scores/promptad/` (default **export** from existing `*-per_sample.csv`; optional **train**/**infer**) — **`docs/FULLPATH_PROMPTAD.md`** |
 
 See **`docs/MODEL_REPRODUCTION.md`**, **`docs/FULLPATH_PATCHCORE.md`**, and **`docs/FULLPATH_PADIM.md`** for environment variables and caveats.
 
@@ -27,6 +28,7 @@ See **`docs/MODEL_REPRODUCTION.md`**, **`docs/FULLPATH_PATCHCORE.md`**, and **`d
 
 - **PatchCore Appendix F:** if `outputs/cached_results/raw_scores/patchcore/unified_raw_scores_long.csv` exists, runs **analyze only** (needs `PATCHCORE_DATA_ROOT`, `PATCHCORE_MODELS_RUN` for upstream CLI). Otherwise copies from `result_analysis/patchcore_tta/`. Set **`PATCHCORE_FROM_RAW=1`** to **require** raw evidence and error if it is missing.
 - **PaDiM sec3:** if `outputs/cached_results/sec3_padim/marginal_protocol_b.csv` exists, plots only. Else uses bundled stubs under `samples/fastpath/`. Set **`PADIM_FROM_RAW=1`** to require raw-derived artifacts and error if missing (see `docs/FULLPATH_PADIM.md`).
+- **PromptAD sec3.1.1:** requires `outputs/cached_results/raw_scores/promptad/unified_raw_scores_wide.csv` or `_long.csv` unless **`SEC3_PROMPTAD_ALLOW_STUB=1`** (bundled stub for demos/CI without raw).
 - **PaDiM Appendix E:** if `outputs/cached_results/app_padim_representation/mechanism_from_raw.csv` exists, copies to tables. Else bundled stub. **`PADIM_FROM_RAW=1`** requires that CSV.
 
 ## Fast path (default Stage 2)
@@ -66,6 +68,15 @@ FULL_RUN=1 bash scripts/run_padim_raw.sh
 
 # Stage 2
 bash scripts/reproduce_sec3_padim.sh
+```
+
+**c) PromptAD unified raw (export from existing per-sample CSVs)**
+
+```bash
+# Stage 1 (default PROMPTAD_MODE=export)
+export PROMPTAD_OUTPUT_ROOT=/path/to/promptad_result_tree   # e.g. result_round1 root
+FULL_RUN=1 bash scripts/run_promptad_raw.sh
+# -> outputs/cached_results/raw_scores/promptad/
 ```
 
 ## Main Paper

@@ -18,6 +18,13 @@
 #   PROMPTAD_EXTRA_ARGS    — extra CLI tokens for train_cls.py only (space-separated; not passed to test_cls.py)
 #   PROMPTAD_INFER_EXTRA_ARGS — optional extra tokens for test_cls.py only
 #
+# Large-grid safety (train/infer loops only):
+#   PROMPTAD_RESUME=1              — skip train and infer when CLS-*-per_sample.csv already exists for that cell
+#   PROMPTAD_FAIL_FAST=1           — stop the grid on first train/infer failure (default: continue, still export at end)
+#   PROMPTAD_STATUS_DIR            — default: $REPO_ROOT/outputs/promptad_fullpath_status
+#   PROMPTAD_RUN_STATUS_CSV        — default: $PROMPTAD_STATUS_DIR/promptad_run_status.csv
+#   PROMPTAD_EXIT_OK_ON_PARTIAL=1 — exit 0 even if some train/infer cells failed (default: exit 1 if any cell failed)
+#
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -38,6 +45,9 @@ MODE="${PROMPTAD_MODE:-export}"
 GPU="${PROMPTAD_GPU:-0}"
 export CUDA_VISIBLE_DEVICES="$GPU"
 PY="${PYTHON:-python3}"
+STATUS_PY="$REPO_ROOT/scripts/promptad_run_status.py"
+STATUS_DIR="${PROMPTAD_STATUS_DIR:-$REPO_ROOT/outputs/promptad_fullpath_status}"
+STATUS_CSV="${PROMPTAD_RUN_STATUS_CSV:-$STATUS_DIR/promptad_run_status.csv}"
 
 IFS=',' read -r -a MODE_ARR <<< "${MODE// /}"
 MODES=()
@@ -56,6 +66,17 @@ if [ "${#MODES[@]}" -eq 0 ]; then
   echo "ERROR: PROMPTAD_MODE empty after parse" >&2
   exit 1
 fi
+
+has_train=0
+has_infer=0
+has_export=0
+for m in "${MODES[@]}"; do
+  case "$m" in
+    train) has_train=1 ;;
+    infer) has_infer=1 ;;
+    export) has_export=1 ;;
+  esac
+done
 
 need_data=0
 for m in "${MODES[@]}"; do
@@ -84,6 +105,34 @@ for m in "${MODES[@]}"; do
   fi
 done
 
+promptad_per_sample_relpath() {
+  local ds="$1" class="$2" shot="$3" seed="$4"
+  echo "${ds}/k_${shot}/csv/CLS-${ds}-${class}-k${shot}-seed${seed}-per_sample.csv"
+}
+
+promptad_status_append() {
+  local ds="$1" class="$2" shot="$3" seed="$4" ts="$5" is="$6" es="$7" path="$8" st="$9" en="${10}" err="${11}"
+  local errf=""
+  local -a ef_args=()
+  if [ -n "$err" ]; then
+    errf="$(mktemp)"
+    printf '%s' "$err" >"$errf"
+    ef_args=(--error-file "$errf")
+  fi
+  "$PY" "$STATUS_PY" append "$STATUS_CSV" \
+    --dataset "$ds" --category "$class" --shot "$shot" --seed "$seed" \
+    --train-status "$ts" --infer-status "$is" \
+    --export-status "$es" \
+    --per-sample-path "$path" \
+    --error-message "" \
+    "${ef_args[@]}" \
+    --start-time "$st" --end-time "$en"
+  if [ -n "$errf" ] && [ -f "$errf" ]; then
+    rm -f "$errf"
+  fi
+  return 0
+}
+
 if [ "$run_train_infer" = "1" ]; then
   echo "[run_promptad_raw] NOTE: upstream PromptAD loads MVTec/VisA from fixed paths (e.g. ~/datasets/mvtec)." >&2
   echo "       Ensure data are visible there, or symlink, e.g.: ln -sfn \"\$PROMPTAD_DATA_ROOT\" \"\$HOME/datasets/mvtec\" for MVTec layout." >&2
@@ -91,6 +140,13 @@ if [ "$run_train_infer" = "1" ]; then
   IFS=',' read -r -a CLASSES <<< "${PROMPTAD_CLASSES// /}"
   IFS=',' read -r -a SHOTS <<< "${PROMPTAD_SHOTS// /}"
   IFS=',' read -r -a SEEDS <<< "${PROMPTAD_SEEDS// /}"
+
+  mkdir -p "$STATUS_DIR"
+  "$PY" "$STATUS_PY" init "$STATUS_CSV"
+  echo "[run_promptad_raw] status CSV: $STATUS_CSV (PROMPTAD_RESUME=${PROMPTAD_RESUME:-0} PROMPTAD_FAIL_FAST=${PROMPTAD_FAIL_FAST:-0})" >&2
+
+  any_cell_failure=0
+
   for ds in "${DATASETS[@]}"; do
     [ -n "$ds" ] || continue
     for class in "${CLASSES[@]}"; do
@@ -99,23 +155,80 @@ if [ "$run_train_infer" = "1" ]; then
         [ -n "$shot" ] || continue
         for seed in "${SEEDS[@]}"; do
           [ -n "$seed" ] || continue
-          for m in "${MODES[@]}"; do
-            if [ "$m" = "train" ]; then
-              echo "[run_promptad_raw] train $ds $class k=$shot seed=$seed"
-              CMD=(
-                "$PY" -m src.models.promptad_adapter.run_promptad train_cls.py
-                --dataset "$ds" --class_name "$class" --k-shot "$shot" --seed "$seed"
-                --root-dir "$PROMPTAD_OUTPUT_ROOT" --gpu-id 0
-              )
-              if [ -n "${PROMPTAD_TRAIN_EXTRA_ARGS:-}" ]; then
-                # shellcheck disable=SC2206
-                CMD+=($PROMPTAD_TRAIN_EXTRA_ARGS)
-              elif [ -n "${PROMPTAD_EXTRA_ARGS:-}" ]; then
-                # shellcheck disable=SC2206
-                CMD+=($PROMPTAD_EXTRA_ARGS)
+
+          rel="$(promptad_per_sample_relpath "$ds" "$class" "$shot" "$seed")"
+          per_sample_host="${PROMPTAD_OUTPUT_ROOT%/}/$rel"
+          per_sample_abs="$(realpath -m "$per_sample_host")"
+
+          cell_start="$(date -Iseconds)"
+          train_status="n/a"
+          infer_status="n/a"
+          err_msg=""
+          export_status_row="n/a"
+          if [ "$has_export" = "1" ]; then
+            export_status_row="pending"
+          fi
+
+          skip_train_infer=0
+          if [ "${PROMPTAD_RESUME:-0}" = "1" ] && [ -f "$per_sample_host" ]; then
+            skip_train_infer=1
+            if [ "$has_train" = "1" ]; then
+              train_status="skipped_existing"
+            fi
+            if [ "$has_infer" = "1" ]; then
+              infer_status="skipped_existing"
+            fi
+          fi
+
+          if [ "$skip_train_infer" = "1" ]; then
+            cell_end="$(date -Iseconds)"
+            promptad_status_append "$ds" "$class" "$shot" "$seed" "$train_status" "$infer_status" \
+              "$export_status_row" "$per_sample_abs" "$cell_start" "$cell_end" ""
+            continue
+          fi
+
+          if [ "$has_train" = "1" ]; then
+            echo "[run_promptad_raw] train $ds $class k=$shot seed=$seed"
+            CMD=(
+              "$PY" -m src.models.promptad_adapter.run_promptad train_cls.py
+              --dataset "$ds" --class_name "$class" --k-shot "$shot" --seed "$seed"
+              --root-dir "$PROMPTAD_OUTPUT_ROOT" --gpu-id 0
+            )
+            if [ -n "${PROMPTAD_TRAIN_EXTRA_ARGS:-}" ]; then
+              # shellcheck disable=SC2206
+              CMD+=($PROMPTAD_TRAIN_EXTRA_ARGS)
+            elif [ -n "${PROMPTAD_EXTRA_ARGS:-}" ]; then
+              # shellcheck disable=SC2206
+              CMD+=($PROMPTAD_EXTRA_ARGS)
+            fi
+            tf="$(mktemp)"
+            set +e
+            "${CMD[@]}" >"$tf" 2>&1
+            rc=$?
+            set -euo pipefail
+            if [ "$rc" -eq 0 ]; then
+              train_status="ok"
+            else
+              train_status="failed"
+              any_cell_failure=1
+              err_msg="$(tail -c 1800 "$tf" | tr '\n\r' '  ')"
+              if [ "${PROMPTAD_FAIL_FAST:-0}" = "1" ]; then
+                rm -f "$tf"
+                infer_status="skipped_fail_fast"
+                cell_end="$(date -Iseconds)"
+                promptad_status_append "$ds" "$class" "$shot" "$seed" "$train_status" "$infer_status" \
+                  "$export_status_row" "$per_sample_abs" "$cell_start" "$cell_end" "$err_msg"
+                echo "[run_promptad_raw] FAIL_FAST: stopping after train failure." >&2
+                exit 1
               fi
-              "${CMD[@]}"
-            elif [ "$m" = "infer" ]; then
+            fi
+            rm -f "${tf:-}"
+          fi
+
+          if [ "$has_infer" = "1" ]; then
+            if [ "$has_train" = "1" ] && [ "$train_status" = "failed" ]; then
+              infer_status="skipped_train_failed"
+            else
               echo "[run_promptad_raw] infer $ds $class k=$shot seed=$seed"
               CMD=(
                 "$PY" -m src.models.promptad_adapter.run_promptad test_cls.py
@@ -126,30 +239,91 @@ if [ "$run_train_infer" = "1" ]; then
                 # shellcheck disable=SC2206
                 CMD+=($PROMPTAD_INFER_EXTRA_ARGS)
               fi
-              "${CMD[@]}"
+              tf="$(mktemp)"
+              set +e
+              "${CMD[@]}" >"$tf" 2>&1
+              rc=$?
+              set -euo pipefail
+              if [ "$rc" -eq 0 ]; then
+                infer_status="ok"
+              else
+                infer_status="failed"
+                any_cell_failure=1
+                err_msg="$(tail -c 1800 "$tf" | tr '\n\r' '  ')"
+                if [ "${PROMPTAD_FAIL_FAST:-0}" = "1" ]; then
+                  rm -f "$tf"
+                  cell_end="$(date -Iseconds)"
+                  promptad_status_append "$ds" "$class" "$shot" "$seed" "$train_status" "$infer_status" \
+                    "$export_status_row" "$per_sample_abs" "$cell_start" "$cell_end" "$err_msg"
+                  echo "[run_promptad_raw] FAIL_FAST: stopping after infer failure." >&2
+                  exit 1
+                fi
+              fi
+              rm -f "${tf:-}"
             fi
-          done
+          fi
+
+          cell_end="$(date -Iseconds)"
+          promptad_status_append "$ds" "$class" "$shot" "$seed" "$train_status" "$infer_status" \
+            "$export_status_row" "$per_sample_abs" "$cell_start" "$cell_end" "$err_msg"
         done
       done
     done
   done
-fi
 
-for m in "${MODES[@]}"; do
-  if [ "$m" = "export" ]; then
-    echo "[run_promptad_raw] export unified raw from $PROMPTAD_OUTPUT_ROOT -> $RAW_OUT"
-    mkdir -p "$RAW_OUT"
-    EXP_CMD=(
-      "$PY" "$REPO_ROOT/src/models/promptad_adapter/promptad_export_unified_raw.py"
-      --input-root "$PROMPTAD_OUTPUT_ROOT"
-      --out-dir "$RAW_OUT"
-    )
-    [ -n "${PROMPTAD_DATASETS:-}" ] && EXP_CMD+=(--datasets-filter "$PROMPTAD_DATASETS")
-    [ -n "${PROMPTAD_CLASSES:-}" ] && EXP_CMD+=(--classes-filter "$PROMPTAD_CLASSES")
-    [ -n "${PROMPTAD_SHOTS:-}" ] && EXP_CMD+=(--shots-filter "$PROMPTAD_SHOTS")
-    [ -n "${PROMPTAD_SEEDS:-}" ] && EXP_CMD+=(--seeds-filter "$PROMPTAD_SEEDS")
-    "${EXP_CMD[@]}"
+  export_failed=0
+  for m in "${MODES[@]}"; do
+    if [ "$m" = "export" ]; then
+      echo "[run_promptad_raw] export unified raw from $PROMPTAD_OUTPUT_ROOT -> $RAW_OUT"
+      mkdir -p "$RAW_OUT"
+      EXP_CMD=(
+        "$PY" "$REPO_ROOT/src/models/promptad_adapter/promptad_export_unified_raw.py"
+        --input-root "$PROMPTAD_OUTPUT_ROOT"
+        --out-dir "$RAW_OUT"
+      )
+      [ -n "${PROMPTAD_DATASETS:-}" ] && EXP_CMD+=(--datasets-filter "$PROMPTAD_DATASETS")
+      [ -n "${PROMPTAD_CLASSES:-}" ] && EXP_CMD+=(--classes-filter "$PROMPTAD_CLASSES")
+      [ -n "${PROMPTAD_SHOTS:-}" ] && EXP_CMD+=(--shots-filter "$PROMPTAD_SHOTS")
+      [ -n "${PROMPTAD_SEEDS:-}" ] && EXP_CMD+=(--seeds-filter "$PROMPTAD_SEEDS")
+      set +e
+      "${EXP_CMD[@]}"
+      erc=$?
+      set -euo pipefail
+      if [ "$erc" -ne 0 ]; then
+        export_failed=1
+        echo "[run_promptad_raw] ERROR: export exited $erc" >&2
+      else
+        if [ -f "$STATUS_CSV" ]; then
+          "$PY" "$STATUS_PY" finalize-export "$STATUS_CSV"
+        fi
+      fi
+    fi
+  done
+
+  if [ "$export_failed" = "1" ]; then
+    exit 1
   fi
-done
+  if [ "$any_cell_failure" = "1" ] && [ "${PROMPTAD_EXIT_OK_ON_PARTIAL:-0}" != "1" ]; then
+    echo "[run_promptad_raw] WARNING: one or more train/infer cells failed (see $STATUS_CSV). Exiting 1." >&2
+    exit 1
+  fi
+else
+  for m in "${MODES[@]}"; do
+    if [ "$m" = "export" ]; then
+      echo "[run_promptad_raw] export unified raw from $PROMPTAD_OUTPUT_ROOT -> $RAW_OUT"
+      mkdir -p "$RAW_OUT"
+      EXP_CMD=(
+        "$PY" "$REPO_ROOT/src/models/promptad_adapter/promptad_export_unified_raw.py"
+        --input-root "$PROMPTAD_OUTPUT_ROOT"
+        --out-dir "$RAW_OUT"
+      )
+      [ -n "${PROMPTAD_DATASETS:-}" ] && EXP_CMD+=(--datasets-filter "$PROMPTAD_DATASETS")
+      [ -n "${PROMPTAD_CLASSES:-}" ] && EXP_CMD+=(--classes-filter "$PROMPTAD_CLASSES")
+      [ -n "${PROMPTAD_SHOTS:-}" ] && EXP_CMD+=(--shots-filter "$PROMPTAD_SHOTS")
+      [ -n "${PROMPTAD_SEEDS:-}" ] && EXP_CMD+=(--seeds-filter "$PROMPTAD_SEEDS")
+      "${EXP_CMD[@]}"
+    fi
+  done
+fi
 
 echo "[run_promptad_raw] done — raw evidence: $RAW_OUT"

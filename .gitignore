@@ -52,6 +52,9 @@ outputs/padim_protocol_b_jobs/
 
 # PromptAD minimal full-path smoke / train root (large; do not commit)
 outputs/promptad_fullpath_minimal/
+outputs/promptad_fullpath_bottle_k1_5seeds/
+outputs/promptad_fullpath_mvtec_3cls_3shots_3seeds/
+outputs/promptad_fullpath_status/
 
 # Model weights / large binaries
 *.pth

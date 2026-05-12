@@ -143,7 +143,7 @@ git add -n . | head -200
 2. **Optional:** `SEC3_PROMPTAD_ALLOW_STUB=1 bash scripts/reproduce_sec3_promptad.sh` to get exit 0 for CI without claiming raw reproduction (still **stub**).
 3. **`reproduce_main.sh`:** today it fails if Sec 3.1.1 fails; orchestration is honest but **blocks** “all green” without raw or stub env.
 4. **PaDiM / PatchCore Stage 1:** run only when data and model roots are known; record a new validation row when done.
-5. **Pair sampling (large runs):** set `SEC3_PROMPTAD_MAX_PAIRS_PER_SETTING` / `SEC4_MAX_PAIRS_PER_SETTING` (and optional `SEC3_PROMPTAD_PAIR_SAMPLING_SEED`, `SEC4_PAIR_SAMPLING_SEED`) before `bash src/experiments/sec3_promptad_observation/run.sh` and `sec4_systematic_validation/run.sh`; see **§9.5**. **Minimal full-path success:** see **§11**.
+5. **Pair sampling (large runs):** set `SEC3_PROMPTAD_MAX_PAIRS_PER_SETTING` / `SEC4_MAX_PAIRS_PER_SETTING` (and optional `SEC3_PROMPTAD_PAIR_SAMPLING_SEED`, `SEC4_PAIR_SAMPLING_SEED`) before `bash src/experiments/sec3_promptad_observation/run.sh` and `sec4_systematic_validation/run.sh`; see **§9.5**. **On-host PromptAD loops:** **§11** (2 seeds), **§12** (5 seeds), **§13** (27-setting medium grid + resume/status tooling).
 
 ---
 
@@ -275,3 +275,84 @@ export SEC4_MAX_PAIRS_PER_SETTING=200000
 
 - **Verified:** PromptAD **train → infer → export → Sec 3.1.1 pairwise → Sec 4 pairwise → `reproduce_main.sh`** for **mvtec / bottle / k=1 / seeds 111,222** with short epochs.
 - **Not verified:** full **81-setting** paper grid, VisA, all shots/seeds, or `Epoch=100` training parity with published tables.
+
+---
+
+## 12. PromptAD small-scale extension — five seeds (2026-05-12)
+
+**Status label:** **`small-scale PromptAD full-path verified`** — **not** the **81-setting** paper reproduction.
+
+### 12.1 Configuration (exact)
+
+| Field | Value |
+|--------|--------|
+| `PROMPTAD_OUTPUT_ROOT` | `/home/zju/mywork/NeurIPS2026/outputs/promptad_fullpath_bottle_k1_5seeds` |
+| Dataset / class / shot / seeds | `mvtec` / `bottle` / `1` / **`111,222,333,444,555`** |
+| Other | Same as §11: `PROMPTAD_DATA_ROOT=/home/zju/datasets/mvtec`, `PROMPTAD_GPU=0`, `PROMPTAD_TRAIN_EXTRA_ARGS="--Epoch 3 --batch-size 8 --eval-freq 1 --num-workers 2"` |
+
+### 12.2 Recorded metrics (after Stage 2 with pair caps)
+
+| Metric | Value |
+|--------|--------|
+| `CLS-*-per_sample.csv` files under `PROMPTAD_OUTPUT_ROOT` | **5** |
+| `unified_raw_scores_wide.csv` lines (incl. header) | **416** → **415** logical rows |
+| `unified_raw_scores_long.csv` lines (incl. header) | **1246** → **1245** logical rows |
+| Sec 3 `pairwise_metrics.csv` lines (incl. header) | **6301** → **6300** data rows |
+| Sec 4 `near_auroc_candidate_pairs.csv` data rows | **10** (pairs with `|ΔAUROC| < 0.002` default ε across the 5 seeds) |
+| `bash scripts/reproduce_main.sh` | **exit 0** |
+
+**Note:** Sec 3 `same_auroc_instability_pairs.csv` still used **near_auroc=0.01** / **min_inst_gap=0.03** in `analyze_sec3_promptad_from_raw.py` and can remain **0 rows** even when Sec 4 lists 10 pairs at **ε=0.002** — different thresholds by design.
+
+### 12.3 Outputs (gitignored)
+
+- `outputs/promptad_fullpath_bottle_k1_5seeds/` (`.gitignore` entry)
+- Unified raw and Sec 3 / Sec 4 caches under `outputs/cached_results/` (existing ignore rules)
+
+### 12.4 Scope honesty
+
+- **Verified:** same pipeline as §11 with **five seeds**; Sec 4 near-AUROC candidate table is **non-empty** (better stress-test than two seeds).
+- **Not verified:** full **81-setting** grid or paper-identical numbers.
+
+---
+
+## 13. PromptAD medium-scale grid + Stage 1 safety (2026-05-12)
+
+**Status label:** **`medium-scale PromptAD full-path verified`** — **not** the **81-setting** paper reproduction.
+
+### 13.1 Stage 1 script behavior (`scripts/run_promptad_raw.sh`)
+
+Enhancements exercised on this pass:
+
+- **`PROMPTAD_RESUME=1`:** skip train and infer when the expected `CLS-*-per_sample.csv` already exists (used here so a previously completed first cell was not re-trained after an aborted pilot run).
+- **Status log:** `outputs/promptad_fullpath_status/promptad_run_status.csv` (columns per **`docs/FULLPATH_PROMPTAD.md`** section **(E)**).
+- **Partial failures:** default is to continue the grid and still run batch **export**; **`PROMPTAD_FAIL_FAST=1`** stops on first failure.
+
+### 13.2 Configuration (exact)
+
+| Field | Value |
+|--------|--------|
+| `PROMPTAD_OUTPUT_ROOT` | `/home/zju/mywork/NeurIPS2026/outputs/promptad_fullpath_mvtec_3cls_3shots_3seeds` |
+| Grid | `mvtec` × **`bottle,cable,capsule`** × shots **`1,2,4`** × seeds **`111,222,333`** |
+| Train | `PROMPTAD_TRAIN_EXTRA_ARGS="--Epoch 3 --batch-size 8 --eval-freq 1 --num-workers 2"` |
+| Other | `PROMPTAD_DATA_ROOT=/home/zju/datasets/mvtec`, `PROMPTAD_GPU=0`, `PROMPTAD_MODE=train,infer,export` |
+
+### 13.3 Recorded metrics
+
+| Metric | Value |
+|--------|--------|
+| `CLS-*-per_sample.csv` files under `PROMPTAD_OUTPUT_ROOT` | **27** |
+| `promptad_run_status.csv` data rows | **27** (all `export_status` **ok** after export) |
+| `unified_raw_scores_wide.csv` logical rows | **3285** |
+| `unified_raw_scores_long.csv` logical rows | **9855** |
+| Sec 3 `pairwise_metrics.csv` data rows | **81927** |
+| Sec 4 `near_auroc_candidate_pairs.csv` candidate pairs | **21** |
+| `bash scripts/reproduce_sec3_promptad.sh` | **exit 0** |
+| `bash scripts/reproduce_sec4_systematic.sh` | **exit 0** |
+| `bash scripts/reproduce_main.sh` | **exit 0** |
+
+Stage 2 env: **`SEC3_PROMPTAD_MAX_PAIRS_PER_SETTING=200000`**, **`SEC4_MAX_PAIRS_PER_SETTING=200000`**.
+
+### 13.4 Scope honesty
+
+- **Verified:** multi-class × multi-shot × multi-seed **27-cell** PromptAD full path with **resume-aware** Stage 1, status CSV, unified raw refresh, and downstream Sec 3 / Sec 4 / main driver.
+- **Not verified:** full **81-setting** grid, VisA, or `Epoch=100` training parity.

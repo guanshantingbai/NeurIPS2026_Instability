@@ -1,4 +1,4 @@
-"""Section 3.1.1 figure outputs for the fast path (no full PromptAD rerun)."""
+"""Section 3.1.1 marker when using stub fallback only (SEC3_PROMPTAD_ALLOW_STUB=1)."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ def main() -> None:
     outdir = Path("outputs/figures/sec3_promptad")
     outdir.mkdir(parents=True, exist_ok=True)
     (outdir / "fastpath_done.txt").write_text(
-        "Fast path only: figures in the paper are not regenerated here.\n"
-        "See outputs/cached_results/sec3_promptad/ for bundled CSV stubs.\n"
-        "Set FULL_RUN=1 in run.sh for full PromptAD pipelines (requires prior artifacts).\n",
+        "Stub fallback (SEC3_PROMPTAD_ALLOW_STUB=1): bundled CSV only — not empirical raw reproduction.\n"
+        "For Section 3.1.1 from PromptAD Stage 1 export, omit the env var and provide\n"
+        "outputs/cached_results/raw_scores/promptad/unified_raw_scores_wide.csv (or _long.csv).\n",
         encoding="utf-8",
     )
     print(f"wrote {outdir / 'fastpath_done.txt'}")

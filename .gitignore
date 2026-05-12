@@ -50,6 +50,9 @@ outputs/cached_results/*
 # PaDiM Protocol B per-seed job dirs when PADIM_OUTPUT_ROOT points under outputs/
 outputs/padim_protocol_b_jobs/
 
+# PromptAD minimal full-path smoke / train root (large; do not commit)
+outputs/promptad_fullpath_minimal/
+
 # Model weights / large binaries
 *.pth
 *.pt

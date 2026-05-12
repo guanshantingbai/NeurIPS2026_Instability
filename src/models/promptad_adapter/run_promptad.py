@@ -1,4 +1,4 @@
-"""Thin adapter for invoking PromptAD scripts from section pipelines."""
+"""Invoke PromptAD Python scripts from repo root (Stage 1 wrappers)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 
 def main() -> int:
     if len(sys.argv) < 2:
-        print("usage: python -m src.models.promptad_adapter.run_promptad <script> [args...]")
+        print("usage: python -m src.models.promptad_adapter.run_promptad <script.py> [args...]")
         return 2
     repo_root = Path(__file__).resolve().parents[3]
     external_root = repo_root / "external" / "PromptAD"

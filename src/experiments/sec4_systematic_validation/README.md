@@ -34,6 +34,16 @@ Per pair:
 
 **Decision consequence:** for each near-AUROC seed pair, take the seed with **higher** `mean_pairwise_instability`; `delta_risk` = `delta_risk(mean_pairwise_error_that_seed, min(errors))` via `src.core.selection_failure.delta_risk`.
 
+**Paper figures** (`outputs/figures/section4/`, names match `paper_figures/promptad/`):
+
+```bash
+python3 src/experiments/sec4_systematic_validation/build_section4_paper_figures.py --repo-root .
+```
+
+**Statistical universe:** near-AUROC **seed pairs** with \\(|\\Delta\\mathrm{AUROC}| < 0.002\\); failure = \\(\\mathrm{risk}_{\\mathrm{AUROC}} - \\mathrm{risk}_{\\mathrm{inst}} > 0.01\\). Implementation: `sec4_near_auroc_universe.py`. Audit: `outputs/figures/section4/SECTION4_FIGURE_AUDIT.md`. Stage 3 entry: `scripts/rebuild_main_figures.sh` (see `docs/PIPELINE_STAGES.md`).
+
+Do **not** use global `failure_conditioned_signal_comparison.csv` or pooled `instability_regime_failure_rate.csv` for these paper figures.
+
 Optional CLI (not passed by default `run.sh`):
 
 ```bash

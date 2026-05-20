@@ -1,6 +1,13 @@
 # Reproduce Guide
 
-This repository reproduces results by paper sections using a **two-stage** layout.
+**Canonical pipeline:** five stages (0–4) in **`docs/PIPELINE_STAGES.md`**.  
+Main-paper figures: **`bash scripts/rebuild_main_figures.sh`** (Stage 2 + 3). Appendix: **`bash scripts/rebuild_appendix_figures.sh`** (Stage 4, partial).
+
+Below, legacy wording “Stage 1 / Stage 2” maps to **Stage 1 (evidence)** and **Stage 2–4 (aggregation + figures)** in that document.
+
+---
+
+This repository also reproduces results by paper section using an older **two-stage** layout.
 
 ## Stage 1 — model-level evidence extraction
 
@@ -9,7 +16,7 @@ Runs **real** upstream inference / scoring (GPU + data as applicable). **Orchest
 | Model | Script | Typical outputs |
 |-------|--------|-------------------|
 | PatchCore | `FULL_RUN=1 bash scripts/run_patchcore_raw.sh` | `outputs/cached_results/raw_scores/patchcore/` (`patchcore_tta_scores.csv`, `unified_raw_scores_long.csv`, …) |
-| PaDiM | `FULL_RUN=1 bash scripts/run_padim_raw.sh` | `PADIM_OUTPUT_ROOT/protocol_b_jobs/…`, then aggregated `outputs/cached_results/raw_scores/padim/`, `marginal_protocol_b.csv`, `mechanism_from_raw.csv` |
+| PaDiM | `FULL_RUN=1 bash scripts/run_padim_raw.sh` | `PADIM_OUTPUT_ROOT/protocol_b_jobs/…`, then aggregated `outputs/cached_results/raw_scores/padim/`, `marginal_protocol_b.csv`, `mechanism_from_raw.csv` — optional **`PADIM_PROFILE=debug|paper`** and optional **`PADIM_CLASSES`** (see **`docs/FULLPATH_PADIM.md`**) |
 | PromptAD | `FULL_RUN=1 bash scripts/run_promptad_raw.sh` | `outputs/cached_results/raw_scores/promptad/` (default **export** from existing `*-per_sample.csv`; optional **train**/**infer**) — **`docs/FULLPATH_PROMPTAD.md`** |
 
 See **`docs/MODEL_REPRODUCTION.md`**, **`docs/FULLPATH_PATCHCORE.md`**, and **`docs/FULLPATH_PADIM.md`** for environment variables and caveats.
@@ -61,9 +68,10 @@ bash scripts/reproduce_app_patchcore_tta.sh
 # Stage 1
 export PADIM_DATA_ROOT=...
 export PADIM_OUTPUT_ROOT=...
-export PADIM_CLASSES=bottle
+export PADIM_PROFILE=paper    # default; use debug for smoke five-class auto-fill when PADIM_CLASSES unset
+# export PADIM_CLASSES=bottle,cable,...   # optional; explicit list overrides PADIM_PROFILE auto-fill
 export PADIM_BACKBONES=resnet18
-export PADIM_SEEDS=444,555
+export PADIM_SEEDS=111,222,333,444,555
 FULL_RUN=1 bash scripts/run_padim_raw.sh
 
 # Stage 2

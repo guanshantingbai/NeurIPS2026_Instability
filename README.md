@@ -10,7 +10,8 @@ Each section has explicit inputs, outputs, scripts, and commands.
 ## Repository Layout
 
 - `docs/`: reproducibility guide, figure/table map, dataset and environment docs.
-- `scripts/`: top-level orchestration scripts for main paper and appendix runs.
+- `docs/PIPELINE_STAGES.md`: **canonical Stages 0–4** (preparation → evidence → aggregation → main figures → appendix).
+- `scripts/`: top-level orchestration (`stage0_prepare.sh`, `run_*_raw.sh`, `rebuild_main_figures.sh`, …).
 - `src/core/`: shared analysis logic (pairwise, instability, risk-coverage, metrics).
 - `src/experiments/`: section-level experiment packages.
 - `src/models/*_adapter/`: thin adapters to external model repositories.
@@ -20,20 +21,37 @@ Each section has explicit inputs, outputs, scripts, and commands.
 
 ## Quick Start
 
-1. Read `docs/ENVIRONMENT.md` and `docs/DATASET.md`.
-2. Check task-to-script mapping in `docs/FIGURE_MAP.md` (fast path vs raw-derived Stage 2).
-3. **Two-stage layout** (see `docs/REPRODUCE.md`):
-   - **Stage 1 — model evidence:** `scripts/run_patchcore_raw.sh`, `scripts/run_padim_raw.sh` (each requires `FULL_RUN=1` plus data/env; **not** invoked by `reproduce_*`).
-   - **Stage 2 — section reproduction:** `scripts/reproduce_app_patchcore_tta.sh`, `scripts/reproduce_sec3_padim.sh`, `scripts/reproduce_app_padim_representation.sh` (consume existing raw/cached assets only; **no** scoring).
-4. Run the **default Stage 2 fast path** (bundled stubs + cached PatchCore TTA assets where raw scores are absent):
-   - `bash scripts/reproduce_main.sh`
-   - `bash scripts/reproduce_appendix.sh`
-5. End-to-end paper reruns: run Stage 1 with real data, then Stage 2; see `docs/REPRODUCIBILITY_STATUS.md`.
+1. Read `docs/ENVIRONMENT.md`, `docs/DATASET.md`, and **`docs/PIPELINE_STAGES.md`**.
+2. **Stage 0 — preparation** (paths, `external/`, sanity; PatchCore weights check is a sub-step):
+   ```bash
+   bash scripts/stage0_prepare.sh
+   ```
+3. **Stage 1 — model evidence** (train/infer/export → `unified_raw_scores_*`):
+   - `FULL_RUN=1 bash scripts/run_promptad_raw.sh`
+   - `FULL_RUN=1 bash scripts/run_padim_raw.sh`
+   - `FULL_RUN=1 bash scripts/run_patchcore_raw.sh`
+4. **Stage 2 + 3 — main paper figures** (aggregate CSV, then `outputs/figures/{sec3_promptad,sec3_padim,section4}/`):
+   ```bash
+   bash scripts/rebuild_main_figures.sh
+   ```
+   Runs Stage 2 aggregation when needed, then Stage 3 figure builders. Does **not** run Stage 0/1.
+5. **Stage 4 — appendix figures** (**partial**):
+   ```bash
+   bash scripts/rebuild_appendix_figures.sh
+   ```
+6. Task-to-script detail: `docs/FIGURE_MAP.md`. Legacy fast path: `bash scripts/reproduce_main.sh` (stub Stage 2 only).
 
-## Current Scope
+## Pipeline summary
 
-- Section-level `reproduce_*` scripts are **Stage 2 only** (cached / raw-derived inputs; exit non-zero if required inputs are missing).
-- **`FULL_RUN=1`** on **`run_*_raw.sh`** runs Stage 1 model extraction for PatchCore / PaDiM; **`reproduce_*` does not auto-call those scripts**.
+| Stage | Entry | Output |
+|-------|--------|--------|
+| 0 | `scripts/stage0_prepare.sh` | Checks only |
+| 1 | `scripts/run_*_raw.sh` | `outputs/cached_results/raw_scores/*/unified_raw_scores_*` |
+| 2 | `scripts/run_promptad_pairwise_aggregation.py`, section `analyze_*` | Aggregate CSV under `outputs/cached_results/` |
+| 3 | `scripts/rebuild_main_figures.sh` (fig builders) | `outputs/figures/sec3_promptad`, `sec3_padim`, `section4` |
+| 4 | `scripts/rebuild_appendix_figures.sh` | `outputs/figures/app_*` (partial) |
+
+Deprecated: `scripts/rebuild_figures_from_raw.sh` → wrapper calling `rebuild_main_figures.sh`.
 
 ## Data Policy
 

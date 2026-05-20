@@ -1,0 +1,14 @@
+# Environment export (UTC 20260514T095430Z)
+## Host
+Linux linux-pc 6.8.0-111-generic #111~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Apr 14 17:13:45 UTC  x86_64 x86_64 x86_64 GNU/Linux
+
+## Shell
+SHELL=/bin/bash
+
+## Python
+/home/zju/miniconda3/envs/myenv/bin/python3
+Python 3.10.17
+
+## pip
+/home/zju/miniconda3/envs/myenv/bin/pip3
+pip 25.2 from /home/zju/miniconda3/envs/myenv/lib/python3.10/site-packages/pip (python 3.10)

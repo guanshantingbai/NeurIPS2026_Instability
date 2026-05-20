@@ -11,7 +11,8 @@
 #   PROMPTAD_RAW_OUT       — default: $REPO_ROOT/outputs/cached_results/raw_scores/promptad
 #   PROMPTAD_MODE          — comma tokens: export (default), train, infer  (e.g. export | infer,export | train,infer,export)
 #   PROMPTAD_DATASETS      — comma filter (e.g. mvtec) for export + loop domains for train/infer
-#   PROMPTAD_CLASSES       — comma class names (required for train/infer)
+#   PROMPTAD_CLASSES       — comma class names (required for train/infer), or **all** / **ALL**
+#                          — expand to upstream lists per dataset (see external/PromptAD/datasets/mvtec.py, visa.py)
 #   PROMPTAD_SHOTS         — comma ints (e.g. 1,2,4) for train/infer + export filter
 #   PROMPTAD_SEEDS         — comma ints for train/infer + export filter
 #   PROMPTAD_GPU           — CUDA_VISIBLE_DEVICES (default 0); train/test pass --gpu-id 0 with this mapping
@@ -91,7 +92,7 @@ if [ "$need_data" = "1" ]; then
     echo "ERROR: PROMPTAD_DATA_ROOT is not a directory: $PROMPTAD_DATA_ROOT" >&2
     exit 1
   fi
-  : "${PROMPTAD_CLASSES:?Set PROMPTAD_CLASSES (comma-separated) for train/infer}"
+  : "${PROMPTAD_CLASSES:?Set PROMPTAD_CLASSES (comma-separated or all) for train/infer}"
   : "${PROMPTAD_DATASETS:?Set PROMPTAD_DATASETS (comma-separated mvtec,visa) for train/infer}"
   : "${PROMPTAD_SHOTS:?Set PROMPTAD_SHOTS (comma-separated ints) for train/infer}"
   : "${PROMPTAD_SEEDS:?Set PROMPTAD_SEEDS (comma-separated ints) for train/infer}"
@@ -104,6 +105,20 @@ for m in "${MODES[@]}"; do
     break
   fi
 done
+
+# Must match external/PromptAD/datasets/mvtec.py / visa.py (Stage 1 wrapper only; no training-code edits).
+_PROMPTAD_MVTEC_ALL="carpet,grid,leather,tile,wood,bottle,cable,capsule,hazelnut,metal_nut,pill,screw,toothbrush,transistor,zipper"
+_PROMPTAD_VISA_ALL="candle,capsules,cashew,chewinggum,fryum,macaroni1,macaroni2,pcb1,pcb2,pcb3,pcb4,pipe_fryum"
+ALL_CLASSES_MODE=0
+if [ -n "${PROMPTAD_CLASSES:-}" ]; then
+  IFS=',' read -r -a _probe_cls <<< "${PROMPTAD_CLASSES// /}"
+  if [ "${#_probe_cls[@]}" -eq 1 ]; then
+    _cx="$(echo "${_probe_cls[0]}" | tr '[:upper:]' '[:lower:]' | xargs)"
+    if [ "$_cx" = "all" ]; then
+      ALL_CLASSES_MODE=1
+    fi
+  fi
+fi
 
 promptad_per_sample_relpath() {
   local ds="$1" class="$2" shot="$3" seed="$4"
@@ -141,6 +156,10 @@ if [ "$run_train_infer" = "1" ]; then
   IFS=',' read -r -a SHOTS <<< "${PROMPTAD_SHOTS// /}"
   IFS=',' read -r -a SEEDS <<< "${PROMPTAD_SEEDS// /}"
 
+  if [ "$ALL_CLASSES_MODE" = "1" ]; then
+    echo "[run_promptad_raw] PROMPTAD_CLASSES=all — per-dataset lists from PromptAD datasets/*.py (15 mvtec + 12 visa)." >&2
+  fi
+
   mkdir -p "$STATUS_DIR"
   "$PY" "$STATUS_PY" init "$STATUS_CSV"
   echo "[run_promptad_raw] status CSV: $STATUS_CSV (PROMPTAD_RESUME=${PROMPTAD_RESUME:-0} PROMPTAD_FAIL_FAST=${PROMPTAD_FAIL_FAST:-0})" >&2
@@ -149,7 +168,20 @@ if [ "$run_train_infer" = "1" ]; then
 
   for ds in "${DATASETS[@]}"; do
     [ -n "$ds" ] || continue
-    for class in "${CLASSES[@]}"; do
+    ds_lc="$(echo "$ds" | tr '[:upper:]' '[:lower:]')"
+    if [ "$ALL_CLASSES_MODE" = "1" ]; then
+      case "$ds_lc" in
+        mvtec) IFS=',' read -r -a EFFECTIVE_CLASSES <<< "${_PROMPTAD_MVTEC_ALL// /}" ;;
+        visa) IFS=',' read -r -a EFFECTIVE_CLASSES <<< "${_PROMPTAD_VISA_ALL// /}" ;;
+        *)
+          echo "ERROR: PROMPTAD_CLASSES=all is only defined for dataset mvtec or visa (got: $ds)" >&2
+          exit 1
+          ;;
+      esac
+    else
+      EFFECTIVE_CLASSES=("${CLASSES[@]}")
+    fi
+    for class in "${EFFECTIVE_CLASSES[@]}"; do
       [ -n "$class" ] || continue
       for shot in "${SHOTS[@]}"; do
         [ -n "$shot" ] || continue
@@ -282,7 +314,9 @@ if [ "$run_train_infer" = "1" ]; then
         --out-dir "$RAW_OUT"
       )
       [ -n "${PROMPTAD_DATASETS:-}" ] && EXP_CMD+=(--datasets-filter "$PROMPTAD_DATASETS")
-      [ -n "${PROMPTAD_CLASSES:-}" ] && EXP_CMD+=(--classes-filter "$PROMPTAD_CLASSES")
+      if [ "${ALL_CLASSES_MODE:-0}" != "1" ] && [ -n "${PROMPTAD_CLASSES:-}" ]; then
+        EXP_CMD+=(--classes-filter "$PROMPTAD_CLASSES")
+      fi
       [ -n "${PROMPTAD_SHOTS:-}" ] && EXP_CMD+=(--shots-filter "$PROMPTAD_SHOTS")
       [ -n "${PROMPTAD_SEEDS:-}" ] && EXP_CMD+=(--seeds-filter "$PROMPTAD_SEEDS")
       set +e
@@ -318,7 +352,9 @@ else
         --out-dir "$RAW_OUT"
       )
       [ -n "${PROMPTAD_DATASETS:-}" ] && EXP_CMD+=(--datasets-filter "$PROMPTAD_DATASETS")
-      [ -n "${PROMPTAD_CLASSES:-}" ] && EXP_CMD+=(--classes-filter "$PROMPTAD_CLASSES")
+      if [ "${ALL_CLASSES_MODE:-0}" != "1" ] && [ -n "${PROMPTAD_CLASSES:-}" ]; then
+        EXP_CMD+=(--classes-filter "$PROMPTAD_CLASSES")
+      fi
       [ -n "${PROMPTAD_SHOTS:-}" ] && EXP_CMD+=(--shots-filter "$PROMPTAD_SHOTS")
       [ -n "${PROMPTAD_SEEDS:-}" ] && EXP_CMD+=(--seeds-filter "$PROMPTAD_SEEDS")
       "${EXP_CMD[@]}"

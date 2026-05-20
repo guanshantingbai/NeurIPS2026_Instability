@@ -40,7 +40,21 @@ Under `outputs/cached_results/sec3_promptad/`:
 - `risk_coverage.csv` — long format: one row per `(setting, coverage step)`; pooled figure interpolates these curves across settings.
 - `sec3_promptad_from_raw_summary.json` — run metadata and sampling flags.
 
-Figures under `outputs/figures/sec3_promptad/`: `scatter_auroc_vs_instability.png`, `hist_instability_distribution.png`, `scatter_instability_vs_ranking_error.png`, `risk_coverage_ranking_error.png`, and `scatter_same_auroc_instability_gaps.png` when applicable.
+### Diagnostic figures vs paper-style Figure 1
+
+- **Diagnostic PNGs** from `analyze_sec3_promptad_from_raw.py` under `outputs/figures/sec3_promptad/` (`scatter_auroc_vs_instability.png`, `hist_instability_distribution.png`, etc.) are **full-pipeline sanity plots** (e.g. pooled pairwise histograms, dense sample scatter). They are useful when validating exports and pair caps; they are **not** trimmed to a single paper-facing layout.
+- **Paper-style Figure 1** is generated **only from cached aggregates** (`setting_level_metrics.csv`, `sample_level_metrics.csv`, `same_auroc_instability_pairs.csv`, `risk_coverage.csv`) — it does **not** load `pairwise_metrics.csv` and does **not** rerun PromptAD or the pairwise enumerator. It produces a 2×2 layout: setting-level AUROC vs instability (with a highlighted seed pair), **setting-level** instability distribution (not the raw pairwise mass), subsampled sample-level instability vs error with Spearman ρ, and dual-seed risk–coverage curves. Outputs:
+  - `outputs/figures/sec3_promptad/paper_style_fig1.png`
+  - `outputs/figures/sec3_promptad/paper_style_fig1.pdf`
+  - `outputs/cached_results/sec3_promptad/paper_style_fig1_summary.json`
+
+Requires **SciPy** (for Spearman). Example:
+
+```bash
+python3 src/experiments/sec3_promptad_observation/build_paper_style_fig1.py \
+  --cache-dir outputs/cached_results/sec3_promptad \
+  --max-samples 3000
+```
 
 ## Run
 

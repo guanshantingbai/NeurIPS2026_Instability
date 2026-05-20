@@ -1,0 +1,36 @@
+
+     active environment : myenv
+    active env location : /home/zju/miniconda3/envs/myenv
+            shell level : 4
+       user config file : /home/zju/.condarc
+ populated config files : /home/zju/miniconda3/.condarc
+                          /home/zju/.condarc
+          conda version : 25.3.1
+    conda-build version : not installed
+         python version : 3.12.9.final.0
+                 solver : libmamba (default)
+       virtual packages : __archspec=1=skylake
+                          __conda=25.3.1=0
+                          __cuda=12.8=0
+                          __glibc=2.35=0
+                          __linux=6.8.0=0
+                          __unix=0=0
+       base environment : /home/zju/miniconda3  (writable)
+      conda av data dir : /home/zju/miniconda3/etc/conda
+  conda av metadata url : None
+           channel URLs : https://conda.anaconda.org/conda-forge/linux-64
+                          https://conda.anaconda.org/conda-forge/noarch
+                          https://repo.anaconda.com/pkgs/main/linux-64
+                          https://repo.anaconda.com/pkgs/main/noarch
+                          https://repo.anaconda.com/pkgs/r/linux-64
+                          https://repo.anaconda.com/pkgs/r/noarch
+          package cache : /home/zju/miniconda3/pkgs
+                          /home/zju/.conda/pkgs
+       envs directories : /home/zju/miniconda3/envs
+                          /home/zju/.conda/envs
+               platform : linux-64
+             user-agent : conda/25.3.1 requests/2.32.3 CPython/3.12.9 Linux/6.8.0-111-generic ubuntu/22.04.5 glibc/2.35 solver/libmamba conda-libmamba-solver/25.1.1 libmambapy/2.0.5 aau/0.5.0 c/. s/. e/.
+                UID:GID : 1000:1000
+             netrc file : None
+           offline mode : False
+

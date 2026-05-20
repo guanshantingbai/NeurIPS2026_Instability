@@ -102,7 +102,8 @@ bash scripts/reproduce_app_patchcore_tta.sh
 | `FULL_RUN` | must be `1` | Gate for real inference |
 | `PADIM_DATA_ROOT` | yes | Dataset root passed to `padim_protocol_b_one_run.py --data_path` |
 | `PADIM_OUTPUT_ROOT` | yes | Writable root; jobs live under `.../protocol_b_jobs/` |
-| `PADIM_CLASSES` | yes | Comma-separated class names |
+| `PADIM_CLASSES` | no\* | Comma-separated class names. **Optional** when `PADIM_PROFILE` auto-fill applies (`mvtec` + unset classes); otherwise **required**. Explicit list **always** overrides profile. |
+| `PADIM_PROFILE` | no | `debug` \| `paper` (default **`paper`**). When `PADIM_CLASSES` is unset: `paper` + `mvtec` → MVTec-15 list; `debug` → five-class smoke list. Non-`mvtec`: set `PADIM_CLASSES`. See **`docs/FULLPATH_PADIM.md`**. |
 | `PADIM_BACKBONES` | yes | Comma-separated `resnet18` and/or `wide_resnet50_2` |
 | `PADIM_SEEDS` | yes | Comma-separated integer seeds |
 | `PADIM_DATASET` | no | `mvtec` (default) or `visa` |
@@ -110,14 +111,14 @@ bash scripts/reproduce_app_patchcore_tta.sh
 | `PADIM_FORCE` | no | `1` re-runs jobs even if `per_sample.csv` exists |
 | `PADIM_EXTRA_ARGS` | no | Space-separated extra CLI tokens (e.g. `--cov-float32 --max-train-images 350`) |
 
-### Commands
+\*`PADIM_CLASSES` may be omitted only when **`PADIM_PROFILE`** supplies defaults (`mvtec` dataset). For **`visa`** or custom layouts, set **`PADIM_CLASSES`** explicitly.
 
 ```bash
 export PADIM_DATA_ROOT=/path/to/mvtec_or_visa
 export PADIM_OUTPUT_ROOT=/path/to/scratch_or_outputs/padim_runs
-export PADIM_CLASSES=bottle
+export PADIM_PROFILE=paper   # default; omit PADIM_CLASSES for canonical MVTec-15 on mvtec
 export PADIM_BACKBONES=resnet18
-export PADIM_SEEDS=444,555
+export PADIM_SEEDS=111,222,333,444,555
 
 FULL_RUN=1 bash scripts/run_padim_raw.sh
 bash scripts/reproduce_sec3_padim.sh
@@ -133,7 +134,7 @@ Includes at least: `sample_id`, `label`, `fused_score`, `view_id`, `condition`, 
 ### Notes
 
 - Default **fast paths** for sec3 / appendix E are unchanged (bundled stubs under `samples/fastpath/`).
-- The legacy **`run_padim_seed_killer_one_click.sh`** wide multi-setting sweep is **not** invoked from Stage 2 `run.sh`; Stage 1 scope is limited by `PADIM_CLASSES` / `PADIM_SEEDS` / `PADIM_BACKBONES`.
+- The legacy **`run_padim_seed_killer_one_click.sh`** wide multi-setting sweep is **not** invoked from Stage 2 `run.sh`; Stage 1 scope is limited by the effective **`PADIM_CLASSES`** (explicit or profile-filled) / `PADIM_SEEDS` / `PADIM_BACKBONES`.
 
 ---
 

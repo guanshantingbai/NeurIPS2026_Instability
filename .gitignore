@@ -39,7 +39,7 @@ mlruns/
 **/runs/
 **/exp/
 
-# Managed outputs (keep folder skeleton)
+# Managed outputs (keep folder skeleton only)
 outputs/figures/*
 outputs/tables/*
 outputs/cached_results/*
@@ -47,13 +47,28 @@ outputs/cached_results/*
 !outputs/tables/.gitkeep
 !outputs/cached_results/.gitkeep
 
+# Full-path / aggregation artifacts (large; never commit)
+outputs/fullpath_training/
+outputs/phase0_status/
+outputs/promptad_pairwise/
+outputs/**/raw_scores/
+
+# Generated CSV/JSON under outputs (pairwise tables, unified raw, status logs)
+outputs/**/*.csv
+outputs/**/*.csv.gz
+outputs/**/*.json
+!outputs/**/.gitkeep
+
 # PaDiM Protocol B per-seed job dirs when PADIM_OUTPUT_ROOT points under outputs/
 outputs/padim_protocol_b_jobs/
+outputs/padim_protocol_b_smallgrid/
+outputs/padim_protocol_b_mvtec15x5/
 
 # PromptAD minimal full-path smoke / train root (large; do not commit)
 outputs/promptad_fullpath_minimal/
 outputs/promptad_fullpath_bottle_k1_5seeds/
 outputs/promptad_fullpath_mvtec_3cls_3shots_3seeds/
+outputs/promptad_fullpath_27cls_3shots_5seeds/
 outputs/promptad_fullpath_status/
 
 # Model weights / large binaries
